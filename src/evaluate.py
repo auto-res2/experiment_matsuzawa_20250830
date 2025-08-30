@@ -365,7 +365,7 @@ def export_light_onnx(model: TinyUNetSummarizer, outfile: str = "unet_light.onnx
 
     wrapper = LightWrapper(model.eps_head).to(device)
     try:
-        import torch.onnx  # noqa
+        # Use torch.onnx.export directly; avoid creating a local 'torch' via 'import torch.onnx'
         torch.onnx.export(
             wrapper, (x, cond, s1, s2, s3, s4, s5, s6), outfile,
             input_names=["x_in", "cond", "s1","s2","s3","s4","s5","s6"],

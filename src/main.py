@@ -40,7 +40,7 @@ def main():
 
     cfg = load_config(args.config)
     # Force all outputs (images and artifacts) to this directory as requested
-    out_dir = ".research/iteration4/images"
+    out_dir = ".research/iteration5/images"
     os.makedirs(out_dir, exist_ok=True)
 
     set_seed(cfg.get("seed", 42))
