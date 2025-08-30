@@ -1,0 +1,48 @@
+# Default experiment configuration for EA-FA on Tesla T4
+exp_id: iteration1
+seeds: [42]
+modes: [inference]  # options: [inference, training]
+
+# Data
+# Use synthetic to avoid large downloads and keep runtimes small for a smoke test
+dataset_name: synthetic
+# If using HF datasets, provide split and tokenizer
+dataset_split: wikitext-103-v1
+tokenizer_name: gpt2
+
+# Sequence lengths to test
+seq_lens: [256, 512]
+
+# Budgeting
+global_tokens_per_iter: 16384
+measure_warmup_iters: 10
+measure_iters: 10
+max_train_steps: 20
+
+# Model
+vocab_size: 50257
+d_model: 384
+n_layers: 6
+n_heads: 6
+mlp_ratio: 4.0
+dropout: 0.0
+amp_dtype_name: float16
+
+# Optimizer
+lr: 0.0003
+betas: [0.9, 0.95]
+eps: 1.0e-08
+weight_decay: 0.1
+
+# Device
+device_index: 0
+
+# EA-FA toggles
+backends: [pytorch_mem_efficient, pytorch_math, xformers]
+power_limits: [50, 60, 70]
+enable_rpa: true
+enable_mpts: true
+enable_skp: true
+entropy_tau: 1.5
+skp_tile: 64
+skp_eps: 1.0e-4
