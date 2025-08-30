@@ -2,7 +2,7 @@
 """
 Main entry for running the LoRA-Prop (+ Time-Warp) experimental pipeline.
 - Orchestrates: preprocess (key-step discovery), train (LoRA adapters), and evaluate (toy experiments).
-- All figures are saved as PDF under .research/iteration11/images.
+- All figures are saved as PDF under .research/iteration12/images.
 - Run from project root: python -m src.main
 
 This script is intentionally lightweight and performs a quick functional run.
@@ -31,7 +31,7 @@ def load_config(path: str) -> Dict[str, Any]:
             "key_K": 3,
             "rank": 8,
             "train": {"epochs": 3, "batch_size": 16, "n_images": 32},
-            "images_out_dir": ".research/iteration11/images",
+            "images_out_dir": ".research/iteration12/images",
             "models_out_dir": "models",
             "models_ckpt_name": "loraprop_toy.pt",
             "seeds": [0, 1]
@@ -51,7 +51,7 @@ def main():
         return
 
     cfg = load_config(args.config)
-    images_out_dir = cfg.get("images_out_dir", ".research/iteration11/images")
+    images_out_dir = cfg.get("images_out_dir", ".research/iteration12/images")
     models_out_dir = cfg.get("models_out_dir", "models")
     device = cfg.get("device", "cpu")
     total_steps = int(cfg.get("total_steps", 10))

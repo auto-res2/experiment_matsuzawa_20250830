@@ -3,7 +3,7 @@
 Training utilities for LoRA-Prop (+ Time-Warp) with a lightweight, toy setup.
 - Implements a tiny backbone that emits per-layer features across a synthetic time-grid.
 - Trains rank-r LoRA adapters to extrapolate features from the nearest previous key-step.
-- Saves trained adapters to the models directory and a training loss curve PDF to .research/iteration11/images.
+- Saves trained adapters to the models directory and a training loss curve PDF to .research/iteration12/images.
 
 Notes
 - This file avoids heavy dependencies and can run on CPU/GPU. It is designed to be fast for a quick test.
@@ -124,14 +124,20 @@ class ToyBackbone(nn.Module):
         self.time_gate2 = nn.Linear(1, c2)
 
     def forward(self, x: torch.Tensor, t: torch.Tensor) -> Dict[str, torch.Tensor]:
-        # t is normalized in [0,1], shape (B,)
+        # t is normalized in [0,1], can be shape (B,) or (1,) or scalar; expand to batch size
         B, _, H, W = x.shape
+        t_vec = t.view(-1).to(x.device)
+        if t_vec.numel() == 1:
+            t_vec = t_vec.expand(B)
+        elif t_vec.numel() != B:
+            # Fallback: repeat first element to match batch
+            t_vec = t_vec[:1].expand(B)
         h1 = self.enc(x)
-        g1 = self.time_gate1(t.view(B,1)).view(B, -1, 1, 1)
+        g1 = self.time_gate1(t_vec.view(-1, 1)).view(B, self.c1, 1, 1)
         f1 = F.silu(h1 + g1)
         h2 = self.down(f1)
         h2 = self.bottleneck(h2)
-        g2 = self.time_gate2(t.view(B,1)).view(B, -1, 1, 1)
+        g2 = self.time_gate2(t_vec.view(-1, 1)).view(B, self.c2, 1, 1)
         f2 = F.silu(h2 + g2)
         return {"down_0": f1, "down_1": f2}
 
@@ -208,7 +214,7 @@ class TrainConfig:
     total_steps: int = 10
     key_steps: Tuple[int, ...] = (2, 5, 8)
     device: str = "cpu"
-    images_out_dir: str = ".research/iteration11/images"
+    images_out_dir: str = ".research/iteration12/images"
     models_out_dir: str = "models"
     model_name: str = "loraprop_toy.pt"
 
