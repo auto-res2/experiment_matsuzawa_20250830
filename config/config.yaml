@@ -1,0 +1,33 @@
+seed: 123
+device: auto
+image_size: 64
+steps: 24
+K: 3
+tau: 0.002
+train:
+  teacher_steps: 200
+  teacher_batch: 8
+  surrogate_steps: 150
+  surrogate_batch: 8
+  lr: 0.002
+surrogate:
+  hidden: 64
+  blocks: 3
+  dropout: 0.1
+base_prompts:
+  - "A vivid landscape with mountains and river"
+  - "A portrait of a person with detailed face"
+  - "City skyline at night panorama"
+  - "Abstract art with many shapes complex"
+  - "Negative lowres noisy image"
+train_repeats: 8
+ood_prompts:
+  - "High detail panorama aspect ratio 32:9 city skyline at night"
+  - "long complex prompt with many many many tokens and entities that are rare and unusual"
+  - "canny edge control depth guidance mountain scene"
+  - "portrait face person depth control"
+  - "negative noisy lowres strange artifact"
+evaluation:
+  run_exp1: true
+  run_exp2: true
+  run_exp3: true
