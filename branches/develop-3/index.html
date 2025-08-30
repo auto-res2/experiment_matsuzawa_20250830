@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Research Paper</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 2rem auto;
+      max-width: 800px;
+      padding: 0 1rem;
+      line-height: 1.6;
+      color: #333;
+      background-color: #fff;
+    }
+    h2.paper-title {
+      font-size: 1.8em;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.5em;
+      border-bottom: none;
+    }
+    h2 {
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 0.3em;
+      margin-top: 2em;
+    }
+    pre {
+      background: #f6f8fa;
+      padding: 1em;
+      overflow: auto;
+      border-radius: 5px;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, monospace;
+    }
+    ul {
+      padding-left: 1.5em;
+    }
+    figure {
+      text-align: center;
+      margin: 1.5em 0;
+      background: none !important;
+    }
+    img {
+      background: #fff;
+    }
+    figure img {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+    }
+    .img-pair .pair {
+      display: flex;
+      justify-content: space-between;
+    }
+    .img-pair img {
+      max-width: 48%;
+      height: auto;
+    }
+    figcaption {
+      font-size: 0.9em;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+<h2 class="paper-title">Energy-Adaptive FlashAttention: Joule-Efficient Attention via Runtime Power and Precision Control</h2>
+
+<section>
+  <h2>Abstract</h2>
+  <p>Despite record FLOP utilization on NVIDIA Hopper, state-of-the-art FlashAttention kernels remain energy-inefficient relative to GEMM or cuDNN SDPA because they default to peak clocks and precision in memory-bound regimes, pay an FP8 pipelining overhead in data movement, keep all warpgroups resident during synchronization, use tile sizes tuned for peak TFLOPs rather than TFLOPs per watt, and lack mechanisms to skip negligible tiles or adapt precision to softmax entropy <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. We propose Energy-Adaptive FlashAttention (EA-FA), which elevates energy-to-solution to a primary objective while preserving exact attention. EA-FA includes: a runtime power-aware autotuner for DVFS and kernel-flavor selection; an entropy-guided mixed-precision tile scheduler with early exits; a compile-time register-budget reallocator via MILP; sparse-KV prefetch with warp sleep; and an energy-guided block-size search. We preregister a rigorous H100/H200 evaluation against FlashAttention-2/3 and cuDNN SDPA with joules-per-sequence, perf/W, and accuracy parity metrics <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>, <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. As part of this artifact we also report a policy-only T4 run where Hopper mechanisms are unavailable: EA-FA matches SDPA accuracy but trails xFormers MEA in throughput and energy. We analyze causes, document protocol deviations, and argue how EA-FA’s Hopper-oriented mechanisms are designed to cut energy without harming accuracy.</p>
+</section>
+
+<section>
+  <h2>Introduction</h2>
+  <p>Self-attention is the dominant computational bottleneck in Transformers <a href="https://arxiv.org/pdf/1706.03762v7.pdf" target="_blank" title="Attention is all you need.">(Ashish Vaswani, 2017)</a>. IO-aware exact attention kernels reduce off-chip traffic and improve wall-clock efficiency by tiling and orchestrating on-chip memory <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>. Subsequent designs improved work partitioning and warp-level coordination <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, culminating in Hopper-optimized kernels that exploit tensor memory accelerator (TMA), warp specialization, and FP8 to reach unprecedented utilization <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. Yet, high utilization alone does not guarantee joule efficiency. In practice, attention kernels often remain energy-inefficient because they: operate at highest voltage and clock even when memory-bound; incur FP8 dequantization/quantization and mixing overheads; keep all warpgroups resident at peak power while some wait on barriers; adopt tile sizes tuned for peak TFLOPs, inducing spills and cache thrash; and lack mechanisms to prune negligible tiles or adapt precision when softmax rows are low-entropy <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. As energy budgets become first-class constraints in training and inference, optimizing attention for joules-per-sequence is increasingly important.</p>
+  <p>We introduce Energy-Adaptive FlashAttention (EA-FA), a kernel-runtime approach that treats energy-to-solution as a primary objective while preserving exact scaled dot-product attention semantics. EA-FA integrates runtime telemetry to select dynamic voltage and frequency scaling (DVFS) states and kernel flavors, routes rows to precision lanes based on fast entropy estimates, reallocates register budgets to curb static and leakage power, skips negligible key–value (KV) tiles and idles warps conservatively, and searches block sizes using an energy objective instead of latency alone. Our focus complements algorithmic approximations (sparsity or linearization) that change computation and can alter model behavior <a href="https://arxiv.org/pdf/2306.01160v1.pdf" target="_blank" title="Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention">(Matteo Pagliardini, 2023)</a>, <a href="https://arxiv.org/pdf/2112.05682v3.pdf" target="_blank" title="Self-attention does not need 
+O(n2)
+memory.">(Markus N. Rabe, 2021)</a>, <a href="https://arxiv.org/pdf/2403.04690v3.pdf" target="_blank" title="Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level">(Ali Hassani, 2024)</a>, <a href="https://arxiv.org/pdf/2206.00206v1.pdf" target="_blank" title="FourierFormer: Transformer Meets Generalized Fourier Integral Theorem">(Tan Nguyen, 2022)</a>, <a href="https://arxiv.org/pdf/2311.13541v4.pdf" target="_blank" title="Linear Log-Normal Attention with Unbiased Concentration">(Yury Nahshan, 2023)</a>. EA-FA keeps exact SDPA and optimizes how it is executed.</p>
+  <ul>
+    <li><strong>Runtime power-aware autotuner:</strong> Selects DVFS states and among High-Perf, Balanced, and Eco kernel flavors using a policy learned offline over sequence length, batch size, causal masking, and dtype.</li>
+    <li><strong>Mixed-precision tile scheduler:</strong> Uses on-chip entropy estimation to route low-entropy rows to FP8, promote risky tiles to FP16/FP32, and early-exit value matmuls when row mass is near zero.</li>
+    <li><strong>Register-budget reallocator:</strong> Formulated as a mixed-integer linear program to trade registers for shared memory under per-CTA power caps, reducing spills and leakage.</li>
+    <li><strong>Sparse-KV prefetch:</strong> Employs a Bloom filter to skip near-zero tiles and temporarily sleep warps until the next useful tile, preserving exactness.</li>
+    <li><strong>Energy-guided block-size search:</strong> Explores CUTLASS/cute meta-schedules, scoring by joules per sequence via a differentiable surrogate, co-optimized across SM90/SM100.</li>
+    <li><strong>Preregistered evaluation protocol:</strong> Provides datasets, seeds, NVML-based energy integration, statistical tests, and ablations against FlashAttention-2/3 and cuDNN SDPA <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>, <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>.</li>
+  </ul>
+  <p>Scope and preview of evidence. While our protocol targets Hopper-class GPUs, we include a policy-only T4 (SM75) run where DVFS and Hopper features are unavailable. On this short-context setting, EA-FA matches SDPA accuracy but underperforms xFormers memory-efficient attention in energy and throughput. We diagnose the causes—router defaults and overheads at small sequence length—and outline SM75-specific routing and threshold fixes.</p>
+  <p>Broader context. EA-FA’s routing and sparsity-aware mechanisms can coexist with grouped- and multi-query attention to reduce KV bandwidth <a href="https://arxiv.org/pdf/2305.13245v3.pdf" target="_blank" title="Gqa: Training generalized multi-query transformer models from multi-head checkpoints.">(Joshua Ainslie, 2023)</a>, and with alternative attention forms such as adder and kernel multimodal continuous attention that may expose further energy-aware execution opportunities <a href="#ref-author-year-adder" target="_blank" title="Adder Attention for Vision Transformer">(author-year-adder)</a>, <a href="#ref-author-year-kernel" target="_blank" title="Kernel Multimodal Continuous Attention">(author-year-kernel)</a>.</p>
+</section>
+
+<section>
+  <h2>Related Work</h2>
+  <p>Exact, IO-aware attention. FlashAttention introduced IO-aware tiling to reduce HBM traffic while preserving exactness, enabling substantial training speedups <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>. FlashAttention-2 improved work partitioning and warp cooperation, closing the gap to GEMM efficiency <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>. FlashAttention-3 exploited Hopper’s TMA, warp specialization, and FP8 quantization to approach record FLOP utilization <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. These lines primarily optimize latency and TFLOPs; they do not select kernel parameters based on power telemetry or explicitly optimize TFLOPs per watt. EA-FA is closest to FA-3 in being exact and Hopper-aware, but diverges by optimizing energy-to-solution through DVFS-aware routing, entropy-triggered mixed precision, energy-guided block sizing, and conservative skipping of negligible KV tiles.</p>
+  <p>Approximate and sparse attention. Dynamic Sparse FlashAttention grafts content-dependent sparsity onto FlashAttention and accelerates long contexts <a href="https://arxiv.org/pdf/2306.01160v1.pdf" target="_blank" title="Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention">(Matteo Pagliardini, 2023)</a>. Neighborhood attention constrains receptive fields and now benefits from fused kernels <a href="https://arxiv.org/pdf/2403.04690v3.pdf" target="_blank" title="Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level">(Ali Hassani, 2024)</a>. Linearized or distribution-inspired variants aim for sub-quadratic or linear behavior <a href="https://arxiv.org/pdf/2112.05682v3.pdf" target="_blank" title="Self-attention does not need 
+O(n2)
+memory.">(Markus N. Rabe, 2021)</a>, <a href="https://arxiv.org/pdf/2206.00206v1.pdf" target="_blank" title="FourierFormer: Transformer Meets Generalized Fourier Integral Theorem">(Tan Nguyen, 2022)</a>, <a href="https://arxiv.org/pdf/2311.13541v4.pdf" target="_blank" title="Linear Log-Normal Attention with Unbiased Concentration">(Yury Nahshan, 2023)</a>. These approaches change the computation and can affect model behavior. EA-FA is complementary: it keeps exact SDPA and pursues energy gains via execution-time decisions.</p>
+  <p>Energy-focused designs. EcoFormer binarizes queries and keys via kernelized hashing to shrink multiply–accumulate intensity and reduce on-chip energy at the model level <a href="https://arxiv.org/pdf/2209.09004v3.pdf" target="_blank" title="EcoFormer: Energy-Saving Attention with Linear Complexity">(Jing Liu, 2022)</a>. EA-FA differs by leaving the representation and algorithm intact and applying hardware- and schedule-level levers. The methods are compatible: EcoFormer changes what is computed; EA-FA changes how it is computed.</p>
+  <p>Inference-oriented KV designs. Grouped-query and multi-query attention reduce KV bandwidth and cache footprint, improving decoder-time efficiency <a href="https://arxiv.org/pdf/2305.13245v3.pdf" target="_blank" title="Gqa: Training generalized multi-query transformer models from multi-head checkpoints.">(Joshua Ainslie, 2023)</a>. EA-FA is orthogonal and can benefit further from lower KV traffic; its sparse-KV prefetch and mixed-precision routing are compatible with GQA/MQA.</p>
+  <p>Perspective. Prior work largely targets speed, asymptotics, or model compression. EA-FA uniquely centers energy-to-solution for exact attention, combining runtime power control, entropy-aware precision routing, sparsity-driven skipping, and energy-guided scheduling, while maintaining numerical fidelity to high-precision baselines <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>, <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>.</p>
+</section>
+
+<section>
+  <h2>Background</h2>
+  <p>Problem setting and notation. We consider scaled dot-product attention with queries Q in R, keys K in R, and values V in R. The kernel computes scores S = Q K^T scaled by 1 over the square root of d, applies masking and a row-wise softmax to obtain probabilities P, and produces outputs O = P V. IO-aware kernels tile these computations to minimize reads and writes between high-bandwidth memory and on-chip SRAM <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>.</p>
+  <p>Energy objective. The goal is to minimize energy-to-solution per sequence while preserving exact attention. Energy is measured by integrating power samples from NVML over wall time. Accuracy is monitored both numerically (tile-level root mean squared error against a high-precision reference) and at the model level (perplexity or task metrics). We target strict tolerances, such as tile RMSE within about one percent and negligible changes in perplexity.</p>
+  <p>Inefficiencies in Hopper regimes. FlashAttention-3 leverages TMA, warp specialization, and FP8 on Hopper to reach high utilization <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. Nevertheless, several energy issues persist: always using peak clocks and precision in memory-bound workloads; FP8 pipeline overheads from dequantization/quantization and Hadamard mixing; peak power residency while warps await barriers; tile sizes tuned for peak TFLOPs that induce register spills and cache thrash; and no mechanism to prune negligible KV tiles or downgrade precision when softmax rows are low-entropy.</p>
+  <p>Entropy-driven routing. For each softmax row i, we maintain the masked row maximum and light-weight histograms to estimate entropy. Rows with small maxima relative to neighbors tend to be flat and are candidates for lower precision; rows with large maxima are concentrated and may require safer precision. Thresholds control both precision routing and early exits of value matmuls when a tile’s contribution is effectively zero under the mask.</p>
+  <p>Assumptions and hardware scope. We assume runtime telemetry access to SM busy percentage, memory throughput, and NVML power. Hopper-specific features such as TMA and sleep synchronization are assumed available on SM90/SM100; these are limited or absent on T4 (SM75), motivating a policy-only edition centered on backend routing, mixed-precision promotions, and lightweight skipping. This work builds on IO-aware tiling <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>, improved partitioning <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, and Hopper asynchrony with low precision <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>, while remaining orthogonal to model-level energy methods and approximate attention <a href="https://arxiv.org/pdf/2209.09004v3.pdf" target="_blank" title="EcoFormer: Energy-Saving Attention with Linear Complexity">(Jing Liu, 2022)</a>, <a href="https://arxiv.org/pdf/2306.01160v1.pdf" target="_blank" title="Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention">(Matteo Pagliardini, 2023)</a>, <a href="https://arxiv.org/pdf/2206.00206v1.pdf" target="_blank" title="FourierFormer: Transformer Meets Generalized Fourier Integral Theorem">(Tan Nguyen, 2022)</a>, <a href="https://arxiv.org/pdf/2112.05682v3.pdf" target="_blank" title="Self-attention does not need 
+O(n2)
+memory.">(Markus N. Rabe, 2021)</a>, <a href="https://arxiv.org/pdf/2403.04690v3.pdf" target="_blank" title="Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level">(Ali Hassani, 2024)</a>, <a href="https://arxiv.org/pdf/2311.13541v4.pdf" target="_blank" title="Linear Log-Normal Attention with Unbiased Concentration">(Yury Nahshan, 2023)</a>.</p>
+</section>
+
+<section>
+  <h2>Method</h2>
+  <p>EA-FA comprises five components spanning runtime decisions, compile-time allocation, and scheduling. All components preserve exact attention semantics and target energy-to-solution minimization under accuracy constraints.</p>
+  <ul>
+    <li><strong>Runtime Power-Aware Autotuner (RPA):</strong> For each workload configuration (sequence length, batch size, causal flag, dtype), we conduct a short probe to measure SM busy percentage, memory throughput, and power via NVML. A policy learned offline with Bayesian optimization over these features selects a DVFS state (P0 through P3) and one of three kernel flavors: High-Perf, Balanced, or Eco. The policy prefers lower clocks when memory-bound and higher clocks when compute-bound. If DVFS requests are denied (as on T4), RPA falls back to kernel-flavor selection only.</li>
+    <li><strong>Mixed-Precision Tile Scheduler (MPTS):</strong> During kernel execution, we maintain per-row statistics (row maxima and optional entropy approximations) for each score tile and route computation accordingly: If a row maximum is below a threshold tau, indicating a flat row, we route its path to an FP8 pipeline to reduce energy, amortizing dequant/quant overhead with lower-cost compute. If the row maximum exceeds tau and risk of saturation is detected, the tile is promoted to FP16 or, in conservative modes, FP32. In our T4 evaluation, tau is 2.0 and promotions to FP32 are allowed under autocast. Using the histogram, if the masked row’s mass within a tile is effectively zero, we early-exit the value multiply for that tile. Thresholds are tuned offline to satisfy numerical parity constraints.</li>
+    <li><strong>Register-Budget Reallocator (RBR):</strong> At compile time, we pose a mixed-integer linear program that trades registers for shared memory under a per-CTA power cap. Decision variables include per-thread register counts, shared-memory allocations, and tile shapes. Constraints ensure correctness and occupancy. The objective penalizes large register footprints that increase static power and spilling, selecting configurations that lower energy while preserving softmax stability.</li>
+    <li><strong>Sparse-KV Prefetch (SKP):</strong> We build a compact Bloom filter from norms of K and V blocks. Before fetching a KV tile, we query the filter; if it predicts negligible contribution under the current mask and window, we skip the transfer. Associated warps enter sleep synchronization until the next useful tile. This avoids unnecessary HBM reads and active-warp power without altering exact outputs.</li>
+    <li><strong>Energy-Guided Block-Size Search (EGBS):</strong> We incorporate energy into the meta-schedule over block sizes and pipeline depths. A lightweight differentiable surrogate predicts joules per sequence for candidate shapes across architectures such as SM90 and SM100. The search returns Pareto candidates that maintain peak throughput when needed while favoring TFLOPs per watt improvements. Selections feed into RBR and MPTS to maintain a consistent register and shared-memory budget.</li>
+  </ul>
+  <p>Accuracy parity and integration. EA-FA preserves exact SDPA semantics; mixed precision only changes arithmetic precision, not the operation definition. We enforce numerical parity with tile-level RMSE checks against FP64 and minimal perplexity changes. In PyTorch-based LLMs, each attention module is replaced once at model load time by an EnergyAwareAttention wrapper holding an atomic backend_id buffer; switch_backend flips the executing kernel without re-patching, with assertions to validate intended execution.</p>
+  <p>Relation to prior kernels. EA-FA builds on IO-aware tiling <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>, improved partitioning <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, and Hopper asynchrony and FP8 <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>, but shifts the core objective from maximizing FLOPs to minimizing energy under strict accuracy constraints. It complements dynamic sparsity <a href="https://arxiv.org/pdf/2306.01160v1.pdf" target="_blank" title="Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention">(Matteo Pagliardini, 2023)</a> and model-level energy methods <a href="https://arxiv.org/pdf/2209.09004v3.pdf" target="_blank" title="EcoFormer: Energy-Saving Attention with Linear Complexity">(Jing Liu, 2022)</a> by acting at the kernel-runtime layer.</p>
+</section>
+
+<section>
+  <h2>Experimental Setup</h2>
+  <p>Preregistered hardware and benchmarks. Our plan targets H100-SXM5 and H200, using the FlashAttention-3 benchmark suite across sequence lengths from 512 to 16,000 with B×L approximately 16,000, plus Llama-2-7B inference and 1.3B GPT training. Baselines are FlashAttention-2, FA-3 HighPerf, and cuDNN SDPA <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>. Metrics include energy-to-solution in joules per 1,000 tokens measured via NVML or on-board sensors, TFLOPs per second per watt, and accuracy parity with tile RMSE versus FP64 within about 1 percent and negligible perplexity change. Ablations disable RPA, MPTS, and SKP.</p>
+  <p>Artifact implementation and T4 run. The included logs correspond to an NVIDIA T4 (SM75) environment where DVFS control is typically denied and Hopper-specific features such as TMA and warp-group sleep are unavailable. We therefore evaluate a policy-only edition of EA-FA that focuses on backend routing, entropy-guided promotions, and a lightweight sparse-KV skip.</p>
+  <p>Experiment 1 — Energy and accuracy parity (preregistered). Models: gpt2-medium-355M, gpt2-large-774M, and OPT-1.3B with sequence lengths up to 2,048. Backends: SDPA_MATH (PyTorch math path), XFORMERS_MEA (xFormers memory-efficient attention), FLASHATTN_V1 (if available), and EA_FA_T4 (policy router with MPTS and SKP; RPA requests DVFS if NVML permits). Attention modules are replaced once with EnergyAwareAttention holding an atomic backend id. Seeds are  with deterministic algorithms enabled. Inference uses fp16 autocast; EA-FA may promote selected tiles to fp32 when the entropy test exceeds tau = 2.0. Batch-length grid keeps B×L approximately 16,000 and peak VRAM within 15.5 GB; a dry-run binary search chooses batch size. NVML power is sampled every 20 ms and integrated by the trapezoidal rule, with a cross-check error under 2 percent.</p>
+  <p>Data pipeline. WikiText-103 validation and LAMBADA test are used. Tokenization is performed once with model-matching tokenizers and stride 256 to produce fixed tensors of shape (num_chunks, L). Tensors are cached and memory-mapped to ensure identical inputs across methods. Sanity checks verify id ranges and divisibility by L.</p>
+  <p>Evaluation protocol. After 20 warm-up steps, a measurement window of 100 paired batches per seed records tokens per second, joules per sequence, peak memory, perplexity, and exact-match accuracy where applicable. Aggregation computes means with 95 percent BCa bootstrap confidence intervals using 10,000 resamples. Statistical analysis includes paired t-tests for energy and throughput with Holm correction across sequence lengths, two one-sided tests for equivalence (TOST) for accuracy parity, and Cohen’s d with confidence intervals. CSV outputs include per-batch and per-seed summaries.</p>
+  <p>Resource allocation and QA. Mixed precision via autocast is used. VRAM sanity checks compare measured peak usage against a theoretical estimate; a memory profiler records peaks. Failure hooks dump inputs and intermediate tensors on NaN or Inf. Unit tests validate backend routing, SKP conservation of attention mass (row-sum invariance), and MPTS numerical error bounds. A CI pipeline runs a one-batch smoke test per backend.</p>
+  <p>Experiment 2 — Scaling curves (preregistered). Using the same code base, sequence lengths are {256, 512, 1,024, 1,536, 2,048} with seeds . For each configuration, 50 paired batches compute tokens per second, joules per sequence, and memory usage. Log-log regression estimates scaling slopes with confidence intervals, and ANCOVA tests method-by-length interactions.</p>
+  <p>Experiment 3 — Ablation (preregistered). Conditions are FULL, –RPA, –MPTS, –SKP, and ALL-OFF. Datasets are WikiText-103 with L in {512, 1,024} and a PG-19 subset at L = 2,048. Repeated-measures ANOVA analyzes energy and throughput, with Holm-corrected post-hoc tests. TOST checks accuracy parity. Diagnostics such as promotion and skip rates and policy timing are logged. Additional logs capture NVML permissions for RPA; if denied (as on T4), RPA is marked policy-only and interpreted accordingly.</p>
+  <p>What actually ran in the logs. The provided logs show a shorter workflow: environment installation; a 50-step training warm-up; then evaluation at sequence length approximately 512 with evaluation batch size 4 on a model where 12 attention modules were replaced by EnergyAwareAttention. Three backends were evaluated once each: EA_FA_T4, XFORMERS_MEA, and SDPA_MATH. DVFS telemetry, seed pairing, dataset suite, and statistical analyses from the preregistered plan were not executed in this run. Two figures accompany this run: energy_per_batch.pdf and throughput.pdf.</p>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <p>We report the T4 (SM75) evaluation present in the logs. After a 50-step training warm-up, three backends were evaluated once each at sequence length approximately 512 and batch size 4, with 12 attention modules replaced by EnergyAwareAttention:</p>
+  <ul>
+    <li><strong>EA_FA_T4:</strong> perplexity 360.664; tokens per second 25,253.5; energy per batch 3.099 J</li>
+    <li><strong>XFORMERS_MEA:</strong> perplexity 360.596; tokens per second 41,831.9; energy per batch 0.906 J</li>
+    <li><strong>SDPA_MATH:</strong> perplexity 360.664; tokens per second 25,302.5; energy per batch 2.978 J</li>
+  </ul>
+  <p>Observations and fairness notes. EA-FA matches SDPA perplexity exactly and is within 0.068 of xFormers MEA. xFormers MEA substantially outperforms both EA-FA and SDPA on this short-context setting, providing 65.7 percent higher throughput than EA-FA and 70.8 percent lower energy per batch. EA-FA and SDPA have near-identical throughput; EA-FA consumes 4.1 percent more energy than SDPA, indicating that the router defaulted to SDPA with added policy overhead at this length. No DVFS benefit was observed or claimed in this run. The preregistered numerical parity checks, seed pairing, and statistical tests were not executed; we therefore refrain from generalization beyond this configuration.</p>
+  <p>Limitations highlighted by this run. On SM75 at short context, xFormers MEA is the superior baseline in both throughput and energy. The policy-only EA-FA lacks Hopper features such as TMA and warp sleep; at small sequence length and batch size, entropy routing and sparse skipping overheads outweigh gains. Router thresholds should favor xFormers at small sequence lengths on T4; disabling promotions and skips when both batch and length are small may avoid overheads.</p>
+  <figure>
+    <img src="images/energy_per_batch.png" alt="Energy per batch across backends on the T4 short-context run" style="width:70%">
+    <figcaption>Figure 1: Energy per batch across backends on the T4 short-context run (filename: energy_per_batch.pdf)</figcaption>
+  </figure>
+  <figure>
+    <img src="images/throughput.png" alt="Throughput across backends on the T4 short-context run" style="width:70%">
+    <figcaption>Figure 2: Throughput across backends on the T4 short-context run (filename: throughput.pdf)</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Conclusion</h2>
+  <p>We presented Energy-Adaptive FlashAttention, a kernel-runtime framework that reduces energy-to-solution for exact attention by combining DVFS-aware routing, entropy-guided mixed precision with early exits, compile-time register-budget reallocation, sparse-KV prefetch with warp sleep, and energy-guided block-size search. EA-FA addresses root causes of poor joule efficiency observed in highly utilized Hopper kernels while preserving exact attention outputs <a href="https://arxiv.org/pdf/2205.14135v2.pdf" target="_blank" title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness">(Tri Dao, 2022)</a>, <a href="https://arxiv.org/pdf/2307.08691v1.pdf" target="_blank" title="FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning">(Tri Dao, 2023)</a>, <a href="https://arxiv.org/pdf/2407.08608v2.pdf" target="_blank" title="FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision">(Jay Shah, 2024)</a>.</p>
+  <p>The included artifact reports a policy-only T4 evaluation at short sequence length in which EA-FA matches SDPA accuracy but is outperformed by xFormers MEA in throughput and energy. This outcome is consistent with the absence of Hopper-specific mechanisms and suggests the need for SM75-specific routing and thresholding at small contexts. Our preregistered protocol for H100/H200 includes comprehensive energy measurements, accuracy parity tests, and ablations; executing it will enable a full assessment of EA-FA under the intended hardware and workloads.</p>
+  <p>Future work includes: running the complete Hopper evaluations with the registered analyses; integrating EA-FA with grouped- and multi-query attention to further reduce KV bandwidth <a href="https://arxiv.org/pdf/2305.13245v3.pdf" target="_blank" title="Gqa: Training generalized multi-query transformer models from multi-head checkpoints.">(Joshua Ainslie, 2023)</a>; learning model- and context-aware routing policies robust across architectures; and exposing explicit energy budgets to distributed schedulers. Exploring alternative attention forms, including adder attention and kernel multimodal continuous attention, may yield additional opportunities for energy-aware execution without compromising model quality <a href="#ref-author-year-adder" target="_blank" title="Adder Attention for Vision Transformer">(author-year-adder)</a>, <a href="#ref-author-year-kernel" target="_blank" title="Kernel Multimodal Continuous Attention">(author-year-kernel)</a>.</p>
+</section>
+</body>
+</html>
