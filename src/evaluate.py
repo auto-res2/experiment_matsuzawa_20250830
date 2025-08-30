@@ -168,17 +168,17 @@ def _eval_backend(model, tokenizer, data_tensor: torch.Tensor, backend_id: int, 
 
 
 def evaluate(cfg: EvalConfig, val_data_path: str, model_path: str) -> Dict[str, Any]:
-    ensure_dir(".research/iteration8/images")
+    ensure_dir(".research/iteration9/images")
 
     device = torch.device(cfg.device if torch.cuda.is_available() else 'cpu')
     tokenizer = _auto_tokenizer(cfg.model_name)
 
     # Load model (fine-tuned if available)
     if os.path.isdir(model_path):
-        model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.float16 if device.type == 'cuda' else torch.float32)
+        model = AutoModelForCausalLM.from_pretrained(model_path, dtype=torch.float16 if device.type == 'cuda' else torch.float32)
     else:
         # Fallback to base model
-        model = AutoModelForCausalLM.from_pretrained(cfg.model_name, torch_dtype=torch.float16 if device.type == 'cuda' else torch.float32)
+        model = AutoModelForCausalLM.from_pretrained(cfg.model_name, dtype=torch.float16 if device.type == 'cuda' else torch.float32)
     model.to(device)
     model.eval()
 
@@ -223,7 +223,7 @@ def evaluate(cfg: EvalConfig, val_data_path: str, model_path: str) -> Dict[str, 
     ax.set_xlabel("")
     ax.set_title("Energy per batch by backend")
     fig.tight_layout()
-    fig.savefig(".research/iteration8/images/energy_per_batch.pdf", bbox_inches="tight", dpi=300)
+    fig.savefig(".research/iteration9/images/energy_per_batch.pdf", bbox_inches="tight", dpi=300)
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(7,5))
@@ -232,9 +232,9 @@ def evaluate(cfg: EvalConfig, val_data_path: str, model_path: str) -> Dict[str, 
     ax.set_xlabel("")
     ax.set_title("Throughput by backend")
     fig.tight_layout()
-    fig.savefig(".research/iteration8/images/throughput.pdf", bbox_inches="tight", dpi=300)
+    fig.savefig(".research/iteration9/images/throughput.pdf", bbox_inches="tight", dpi=300)
     plt.close(fig)
 
     # Save CSV of results
-    df.to_csv(".research/iteration8/images/eval_summary.csv", index=False)
+    df.to_csv(".research/iteration9/images/eval_summary.csv", index=False)
     return {r['backend']: r for r in results}

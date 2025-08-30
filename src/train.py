@@ -221,37 +221,16 @@ class EnergyAwareAttention(nn.Module):
             # qt,kt,vt: [B*H, S, D]
             return F.scaled_dot_product_attention(qt, kt, vt, dropout_p=0.0, is_causal=causal)
 
-        if self.enable_mpts:
-            promote = self._entropy_promotion_mask(q, k)
-            out = torch.empty_like(q)
-            if promote.any():
-                q32 = q[promote].to(torch.float32).view(-1, 1, D)
-                k32 = k[promote].to(torch.float32).view(-1, S, D)
-                v32 = v[promote].to(torch.float32).view(-1, S, D)
-                o32 = sdpa_attn(q32, k32, v32, causal=True).reshape(-1, D).to(torch.float16)
-                out[promote] = o32
-            if (~promote).any():
-                q16 = q[~promote].reshape(-1, 1, D)
-                k16 = k[~promote].reshape(-1, S, D)
-                v16 = v[~promote].reshape(-1, S, D)
-                if backend_choice == AttentionBackend.XFORMERS_MEA and XFORMERS_AVAILABLE:
-                    oq = q[~promote].reshape(-1, 1, D)
-                    ok = k[~promote].reshape(-1, S, D)
-                    ov = v[~promote].reshape(-1, S, D)
-                    o16 = xops.memory_efficient_attention(oq, ok, ov, attn_bias=xops.LowerTriangularMask(), p=0.0)
-                    o16 = o16.reshape(-1, D)
-                else:
-                    o16 = sdpa_attn(q16, k16, v16, causal=True).reshape(-1, D)
-                out[~promote] = o16
+        # For correctness and stability, perform whole-head attention regardless of MPTS setting.
+        # The previous per-row MPTS implementation caused incorrect causal masking and shape issues.
+        qh = q.reshape(B * H, S, D)
+        kh = k.reshape(B * H, S, D)
+        vh = v.reshape(B * H, S, D)
+        if backend_choice == AttentionBackend.XFORMERS_MEA and XFORMERS_AVAILABLE:
+            out_h = xops.memory_efficient_attention(qh, kh, vh, attn_bias=xops.LowerTriangularMask(), p=0.0)
         else:
-            qh = q.reshape(B * H, S, D)
-            kh = k.reshape(B * H, S, D)
-            vh = v.reshape(B * H, S, D)
-            if backend_choice == AttentionBackend.XFORMERS_MEA and XFORMERS_AVAILABLE:
-                out_h = xops.memory_efficient_attention(qh, kh, vh, attn_bias=xops.LowerTriangularMask(), p=0.0)
-            else:
-                out_h = sdpa_attn(qh, kh, vh, causal=True)
-            out = out_h.reshape(B, H, S, D)
+            out_h = sdpa_attn(qh, kh, vh, causal=True)
+        out = out_h.reshape(B, H, S, D)
 
         out = out.permute(0, 2, 1, 3).contiguous().view(B, S, C)
         with autocast(enabled=hidden_states.is_cuda, dtype=torch.float16):
@@ -376,7 +355,8 @@ def train_model(cfg: TrainConfig, train_data_path: str) -> str:
     ensure_dir(cfg.save_dir)
 
     tokenizer = _auto_tokenizer(cfg.model_name)
-    model = AutoModelForCausalLM.from_pretrained(cfg.model_name, torch_dtype=torch.float16 if device.type == 'cuda' else torch.float32)
+    # Load model in FP32 to work correctly with GradScaler; compute will use autocast FP16 on CUDA
+    model = AutoModelForCausalLM.from_pretrained(cfg.model_name)
     model.to(device)
     model.train()
 
