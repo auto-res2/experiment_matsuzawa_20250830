@@ -648,6 +648,68 @@
       }
     }
   ],
+  "reference_research_study_list": [
+    {
+      "title": "TRACT: denoising diffusion models with transitive closure time-distillation"
+    },
+    {
+      "title": "JAX: composable transformations of Python+NumPy programs"
+    },
+    {
+      "title": "Imagenet: A large-scale hierarchical image database"
+    },
+    {
+      "title": "Which moments to match?"
+    },
+    {
+      "title": "Generative adversarial networks"
+    },
+    {
+      "title": "Large sample properties of generalized method of moments estimators"
+    },
+    {
+      "title": "Multistep consistency models"
+    },
+    {
+      "title": "Gans trained by a two time-scale update rule converge to a local nash equilibrium"
+    },
+    {
+      "title": "Classifier-free diffusion guidance"
+    },
+    {
+      "title": "Denoising diffusion probabilistic models"
+    },
+    {
+      "title": "simple diffusion: End-to-end diffusion for high resolution images"
+    },
+    {
+      "title": "Scalable adaptive computation for iterative generation"
+    },
+    {
+      "title": "Elucidating the design space of diffusion-based generative models"
+    },
+    {
+      "title": "Consistency trajectory models: Learning probability flow ODE trajectory of diffusion"
+    },
+    {
+      "title": "Adam: A method for stochastic optimization"
+    },
+    {
+      "title": "Understanding the diffusion objective as a weighted integral of elbos"
+    },
+    {
+      "title": "Variational diffusion models"
+    },
+    {
+      "title": "Microsoft COCO: common objects in context"
+    },
+    {
+      "title": "Instaflow: One step is enough for high-quality diffusion-based text-to-image generation"
+    },
+    {
+      "title": "Power hungry processing: Watts driving the cost of ai deployment?"
+    }
+  ],
   "new_method": {
     "method": "Open Problems: Most existing accelerators for discrete diffusion models eliminate EITHER sampling steps (e.g.\nDPM-Solver, distillation) OR expensive network passes inside each step (e.g.\nEncoder propagation, DeepCache, ASE).  When the step budget is already very\nsmall (≤8) the quality of coarse-time solvers drops sharply, and the\nin-network shortcuts that reuse features become ineffective because adjacent\ntime-steps are no longer similar.  A key unsolved problem therefore is:\n\nHow can we keep image quality at extreme low-step regimes (3-8 steps) **and**\nreduce the FLOPs per step, without retraining the whole UNet or relying on\nheavy teacher-student distillation?  Solving this would make near-real-time\nhigh-resolution diffusion practical on edge devices and unlock new latency-\nconstrained applications.\nMethods: We propose \"LoRA-Prop (+ Time-Warp)\": a plug-in module that (1) learns a\nlightweight, low-rank adapter that linearly extrapolates UNet *features* in\ntime, and (2) warps the solver’s time-grid so that the expensive full UNet is\ninvoked only at information-rich key instants.\n\n1. Key-step discovery (Time-Warp)\n   • Run one dry pass of any ODE/SDE solver (e.g. DDIM-40) on a batch of\n     latents and compute the per-layer feature change ΔFℓ(t)=‖Fℓ(t)−Fℓ(t−1)‖.\n   • Select K key steps by maximizing overall ΔF across layers with a greedy\n     sub-modular criterion (covers early noise as well as late detail).\n   • Non-key steps will be approximated rather than fully recomputed.\n\n2. Low-Rank Propagation (LoRA-Prop)\n   • At every encoder/decoder block we freeze the original weights and append a\n     rank-r (r≪C) LoRA adapter W_aW_b that is trained **once** for the given\n     base model on a small image set (≤10 k images, 1 GPU-day).\n   • Training objective:\n        min ‖ F̂ℓ(t) − Fℓ(t) ‖₂ where\n        F̂ℓ(t)=Fℓ(t′)+LoRAℓ(Fℓ(t′),Δt) ,   t′ = nearest previous key-step\n     The adapter therefore predicts the feature at t from the cached feature at\n     t′ using only a rank-r projection and a time-embedding Δt.\n   • Because adapters are tiny (≤1 % parameters) the extra forward cost at\n     non-key steps is negligible (two 1×1 GEMMs) and can run in INT8.\n   • The scheme is **model-agnostic** (UNet, DiT, SDXL) and does not alter the\n     original weights, preserving existing checkpoints and LoRA LyCORIS stacks.\n\n3. Hybrid solver\n   • A standard fast solver (e.g. DPM-Solver++/UniPC) is executed on the warped\n     time-grid.  For key steps we call the full UNet; for skipped steps we use\n     LoRA-Prop to propagate features layer-wise and run *only* the inexpensive\n     mid-block+output layers (≈10 % of FLOPs).\n\nNovelty v.s. prior work\n   • Unlike Encoder-propagation, features are *extrapolated* rather than simply\n     reused, keeping fidelity when steps are far apart.\n   • Unlike distillation, we fine-tune only rank-r adapters (≲5 M params) and\n     retain the original generative behaviour.\n   • Combines step-reduction and per-step FLOP reduction synergistically.\nExperimental Setup: Models\n  • Stable Diffusion v1.5 (512²) latent UNet.\n  • Diag.\n    DiT-XL-2 (256²) latent model.\n  • ADM-256 pixel UNet.\nDatasets\n  • COCO-30k prompts & validation images.\n  • ImageNet-50k class-conditional set.\nBaselines\n  1. DPM-Solver++ (8 & 4 steps)\n  2. FasterDiffusion (encoder propagation)\n  3. AdaptiveDiffusion (step skipping)\n  4. Moment-Matching distillation (8-step student)\nMetrics\n  • FID/IS (image quality)\n  • CLIPScore/ImageReward (text alignment)\n  • Throughput (it/s) & GFLOPs / image\n  • Peak memory and mobile latency (iPhone 14 Pro A16)\n  • Robustness: quality drop w.r.t. guidance scale ∈[1,15] and prompt length.\nAblations\n  • Rank r ∈{4,8,16}\n  • Number of key steps K ∈{2,3,4} for total NFEs 3-8.\n  • Effect of INT8 vs FP16 adapters.\n  • Time-grid selection strategy (greedy vs uniform).\nTraining cost reporting.\nImplementation\n  • PyTorch; adapters injected via PEFT-style API; ONNX export for mobile.\nResult: Expected\n  • At 4 sampling steps LoRA-Prop attains FID within +0.3 of 20-step DDIM and\n    ≈1.0 better than DPM-Solver++-4.\n  • Throughput improves 1.8-2.3× over FasterDiffusion and >4× over vanilla\n    DPM-Solver++-4 on A100; mobile latency <1100 ms for 512×512 generation.\n  • Quality remains stable across guidance scales up to 12, unlike encoder\n    caching which blurs textures.\n  • Parameter overhead <1 % and no additional VRAM during training.\n  • Generalises: the same adapters plugged into DreamBooth-finetuned checkpoints\n    degrade FID by <0.5 without retraining.\nConclusion: LoRA-Prop (+Time-Warp) demonstrates that a tiny, once-trained set of low-rank\nadapters can *predict* intermediate UNet features, enabling both drastic step\nreduction and per-step FLOP savings.  This fills the long-standing gap where\nexisting accelerators fail at extreme low-step regimes or incur full UNet\ncomputations.\n\nAcademically, the work bridges numerical ODE solvers with neural feature\nprediction, opening a principled way to trade compute for linear feature\nextrapolation.  Practically, it delivers sub-second 512² text-to-image\ngeneration on flagship phones **without** retraining huge models, making\nhigh-fidelity diffusion viable for AR/creative apps.  Future work includes\nextending the adapter prediction to video diffusion (temporal LoRA-Prop) and\nexploring theoretical error bounds of feature extrapolation along diffusion\ntrajectories.",
     "experimental_design": {
