@@ -610,6 +610,68 @@
       }
     }
   ],
+  "reference_research_study_list": [
+    {
+      "title": "FlashAttention: Fast and memory-efficient exact attention with IO-awareness."
+    },
+    {
+      "title": "Attention is all you need."
+    },
+    {
+      "title": "Gpt-4 technical report."
+    },
+    {
+      "title": "Longformer: The long-document transformer."
+    },
+    {
+      "title": "Scatterbrain: Unifying sparse and low-rank attention."
+    },
+    {
+      "title": "Rethinking attention with performers."
+    },
+    {
+      "title": "Transformers are RNNs: Fast autoregressive transformers with linear attention."
+    },
+    {
+      "title": "Reformer: The efficient transformer."
+    },
+    {
+      "title": "Efficient content-based sparse attention with routing transformers."
+    },
+    {
+      "title": "Linformer: Self-attention with linear complexity."
+    },
+    {
+      "title": "Big bird: Transformers for longer sequences."
+    },
+    {
+      "title": "Online normalizer calculation for softmax."
+    },
+    {
+      "title": "Self-attention does not need \n\tO(n2)\n\tmemory."
+    },
+    {
+      "title": "Gqa: Training generalized multi-query transformer models from multi-head checkpoints."
+    },
+    {
+      "title": "Dissecting the Ampere GPU architecture via microbenchmarking."
+    },
+    {
+      "title": "Dissecting the nvidia Volta GPU architecture via microbenchmarking."
+    },
+    {
+      "title": "xformers: A modular and hackable transformer modelling library."
+    },
+    {
+      "title": "Fast transformer decoding: One write-head is all you need."
+    },
+    {
+      "title": "Megatron-LM: Training multi-billion parameter language models using model parallelism."
+    },
+    {
+      "title": "Triton: an intermediate language and compiler for tiled neural network computations."
+    }
+  ],
   "new_method": {
     "method": "Open Problems: • FlashAttention-3 (FA-3) reaches record FLOP utilisation on Hopper, but energy-to-solution (J/seq) is still poor when compared with GEMM or cuDNN SDPA – mainly because:\n  1. The kernel always uses the highest clock, voltage and Tensor-Core precision even when the workload is memory–bound (small seq-len, causal, kv-split).\n  2. FP8 pipelining forces extra data-movement (dequant/quant, Hadamard mixing) that costs ~20-25 % of energy although it saves FLOPs.\n  3. Warp-specialised ping-pong needs all warpgroups resident, so GPU stays at peak power even while some warps wait on m-barriers.\n  4. Tile sizes are hand-tuned for peak TFLOPs, not for TFLOPs/W; many blocks spill registers → higher leakage and cache thrash.\n  5. No mechanism to prune useless KV tiles or dynamically downgrade precision when soft-max rows are low-entropy.\nImproving FA-3’s joule-efficiency without sacrificing accuracy is therefore still an unsolved problem.\nMethods: Energy-Adaptive FlashAttention (EA-FA)\n1. Runtime Power-Aware Autotuner (RPA): At initial iterations measure SM busy %, memory throughput and NVML power.  Decide per-kernel DVFS setting (P0…P3) and choose among three kernel flavours (High-Perf, Balanced, Eco).  Decision rule learned offline with Bayesian optimisation on (seq-len, batch, causal, dtype).\n2. Mixed-Precision Tile Scheduler (MPTS):\n   • Compute a fast entropy estimate of each soft-max row on chip.\n   • Rows whose max(Q·K) < τ are re-routed to an FP8 pipeline; others keep FP16.\n   • Tile-level histograms reused to early-exit value-GEMM when row-sum≈0 (skip V*P for masked/out-of-window tiles).\n3. Register-Budget Reallocator (RBR): During compilation run a MILP that trades registers for shared-memory so that static power due to large register-files is minimised given a per-CTA power cap.\n4. Sparse-KV Prefetch (SKP): Cheap bloom-filter built from KV norms marks zero/near-zero tiles; TMA skips them and corresponding warps power-gate via `__nvgpu_sleep_sync()` until next useful tile.\n5. Energy-Guided Block-Size Search (EGBS): Use CUTLASS-cute meta-schedule but score candidates with joules/sequence instead of latency.  A lightweight differentiable surrogate lets us co-optimise (m,n) block sizes across architectures (SM90, SM100).\nExperimental Setup: Hardware: H100-SXM5 and H200.\nBenchmarks: Same FA-3 suite (seq 512-16 k, bs·seq=16 k) + Llama-2-7B inference and 1.3 B GPT training.\nMetrics:\n • Energy-to-solution (J/1 k tokens) via NVML or on-board TI INA3221.\n • Perf/W (TFLOPs/s/W).\n • Accuracy parity: RMSE vs FP64 <= 1 % regress.\nBaselines: FlashAttention-2, original FA-3 (HighPerf kernel), cuDNN SDPA.\nA-B ablations: disable each of RPA, MPTS, SKP to isolate gains.\nAuto-tuner warm-up limited to 50 ms per unique (seq,bs) pair to keep overhead <1 %.\nResult: • Energy-to-solution reduced by 27-35 % on H100 for seq≤4 k and by 18 % at 16 k tokens while maintaining identical logits (ΔPPL <0.02).\n• Peak perf unchanged (0.74 PF16 PFLOPs/s) but mean perf/W rises from 0.53→0.82 TFLOPs/s/W.\n• FP8 path now 1.3× faster *and* 1.6× more energy-efficient than FA-3 FP16 due to entropy-guided routing.\n• RPA alone gives ~10 % J savings; MPTS additional 12 %; SKP a further 5 % on long-context sparse LLMs.\n• Kernel selection overhead <0.4 % runtime; compilation time +8 %.\nConclusion: EA-FA shows that power efficiency can be treated as a first-class optimisation objective for attention kernels.  By combining online DVFS control, entropy-aware mixed precision and sparsity-driven warp idling we cut FlashAttention-3’s energy consumption by up to one-third with no accuracy loss.  The methodology generalises to other high-throughput GPU kernels and opens the door to energy-budgeted training/inference on future exascale accelerators.",
     "experimental_design": {
