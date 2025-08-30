@@ -6,5 +6,82 @@
     "fast sampling diffusion",
     "diffusion timestep reduction",
     "progressive distillation diffusion"
+  ],
+  "research_study_list": [
+    {
+      "title": "Faster Diffusion: Rethinking the Role of the Encoder for Diffusion Model Inference"
+    },
+    {
+      "title": "Accelerating Guided Diffusion Sampling with Splitting Numerical Methods"
+    },
+    {
+      "title": "Multistep Distillation of Diffusion Models via Moment Matching"
+    },
+    {
+      "title": "Fast Sampling via Discrete Non-Markov Diffusion Models with Predetermined Transition Time"
+    },
+    {
+      "title": "Diffusion Sampling with Momentum for Mitigating Divergence Artifacts"
+    },
+    {
+      "title": "A Simple Early Exiting Framework for Accelerated Sampling in Diffusion Models"
+    },
+    {
+      "title": "Wavelet Diffusion Models Are Fast and Scalable Image Generators"
+    },
+    {
+      "title": "SnapFusion: Text-to-Image Diffusion Model on Mobile Devices within Two Seconds"
+    },
+    {
+      "title": "Training-Free Adaptive Diffusion with Bounded Difference Approximation Strategy"
+    },
+    {
+      "title": "Post-Training Quantization on Diffusion Models"
+    },
+    {
+      "title": "Multistep Distillation of Diffusion Models via Moment Matching"
+    },
+    {
+      "title": "Semi-Implicit Denoising Diffusion Models (SIDDMs)"
+    },
+    {
+      "title": "A Simple Early Exiting Framework for Accelerated Sampling in Diffusion Models"
+    },
+    {
+      "title": "Reverse Transition Kernel: A Flexible Framework to Accelerate Diffusion Inference"
+    },
+    {
+      "title": "Fast ODE-based Sampling for Diffusion Models in Around 5 Steps"
+    },
+    {
+      "title": "Towards More Accurate Diffusion Model Acceleration with A Timestep Tuner"
+    },
+    {
+      "title": "Temporal Dynamic Quantization for Diffusion Models"
+    },
+    {
+      "title": "Multistep Distillation of Diffusion Models via Moment Matching"
+    },
+    {
+      "title": "Training-Free Adaptive Diffusion with Bounded Difference Approximation Strategy"
+    },
+    {
+      "title": "Accelerating Diffusion Sampling with Optimized Time Steps"
+    },
+    {
+      "title": "Data Distillation Can Be Like Vodka: Distilling More Times For Better Quality"
+    },
+    {
+      "title": "On Distillation of Guided Diffusion Models"
+    },
+    {
+      "title": "Plug-and-Play Diffusion Distillation"
+    },
+    {
+      "title": "PaGoDA: Progressive Growing of a One-Step Generator from a Low-Resolution Diffusion Teacher"
+    },
+    {
+      "title": "Multistep Distillation of Diffusion Models via Moment Matching"
+    }
   ]
 }
