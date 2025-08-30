@@ -1,0 +1,407 @@
+[
+  {
+    "method": "full",
+    "nfe": 4,
+    "guidance": 1.0,
+    "psnr": 5.63291959271669,
+    "mse": 0.27342893555760384,
+    "gflops": 0.144359424,
+    "throughput_ips": 682.1089592974338
+  },
+  {
+    "method": "full",
+    "nfe": 4,
+    "guidance": 3.0,
+    "psnr": 5.6326187560140895,
+    "mse": 0.27344805374741554,
+    "gflops": 0.144359424,
+    "throughput_ips": 729.2410523445798
+  },
+  {
+    "method": "full",
+    "nfe": 4,
+    "guidance": 7.5,
+    "psnr": 5.631943607640265,
+    "mse": 0.2734909616410732,
+    "gflops": 0.144359424,
+    "throughput_ips": 731.2773309897781
+  },
+  {
+    "method": "full",
+    "nfe": 4,
+    "guidance": 10.0,
+    "psnr": 5.631566952899825,
+    "mse": 0.27351490035653114,
+    "gflops": 0.144359424,
+    "throughput_ips": 734.4285044829838
+  },
+  {
+    "method": "full",
+    "nfe": 4,
+    "guidance": 12.0,
+    "psnr": 5.63126480847984,
+    "mse": 0.27353410795331,
+    "gflops": 0.144359424,
+    "throughput_ips": 735.0891751833544
+  },
+  {
+    "method": "full",
+    "nfe": 6,
+    "guidance": 1.0,
+    "psnr": 5.627082535294928,
+    "mse": 0.27379608154296875,
+    "gflops": 0.216539136,
+    "throughput_ips": 496.4288381861533
+  },
+  {
+    "method": "full",
+    "nfe": 6,
+    "guidance": 3.0,
+    "psnr": 5.626603924692658,
+    "mse": 0.273826539516449,
+    "gflops": 0.216539136,
+    "throughput_ips": 492.42737007578955
+  },
+  {
+    "method": "full",
+    "nfe": 6,
+    "guidance": 7.5,
+    "psnr": 5.625523235682263,
+    "mse": 0.27389535307884216,
+    "gflops": 0.216539136,
+    "throughput_ips": 492.4960324211146
+  },
+  {
+    "method": "full",
+    "nfe": 6,
+    "guidance": 10.0,
+    "psnr": 5.624919185842565,
+    "mse": 0.2739338353276253,
+    "gflops": 0.216539136,
+    "throughput_ips": 495.16924187972484
+  },
+  {
+    "method": "full",
+    "nfe": 6,
+    "guidance": 12.0,
+    "psnr": 5.62443224562705,
+    "mse": 0.2739648260176182,
+    "gflops": 0.216539136,
+    "throughput_ips": 492.9686048869249
+  },
+  {
+    "method": "full",
+    "nfe": 8,
+    "guidance": 1.0,
+    "psnr": 5.616968519125078,
+    "mse": 0.27443352341651917,
+    "gflops": 0.288718848,
+    "throughput_ips": 373.9491282045246
+  },
+  {
+    "method": "full",
+    "nfe": 8,
+    "guidance": 3.0,
+    "psnr": 5.616316131368881,
+    "mse": 0.2744751535356045,
+    "gflops": 0.288718848,
+    "throughput_ips": 370.2121408076825
+  },
+  {
+    "method": "full",
+    "nfe": 8,
+    "guidance": 7.5,
+    "psnr": 5.614839771491587,
+    "mse": 0.27456939592957497,
+    "gflops": 0.288718848,
+    "throughput_ips": 372.33445368336754
+  },
+  {
+    "method": "full",
+    "nfe": 8,
+    "guidance": 10.0,
+    "psnr": 5.614004921044353,
+    "mse": 0.27462269738316536,
+    "gflops": 0.288718848,
+    "throughput_ips": 372.25158223375786
+  },
+  {
+    "method": "full",
+    "nfe": 8,
+    "guidance": 12.0,
+    "psnr": 5.613329900432607,
+    "mse": 0.27466580644249916,
+    "gflops": 0.288718848,
+    "throughput_ips": 372.80009668493597
+  },
+  {
+    "method": "cache",
+    "nfe": 4,
+    "guidance": 1.0,
+    "psnr": 5.63291959271669,
+    "mse": 0.27342893555760384,
+    "gflops": 0.10890276,
+    "throughput_ips": 832.9365334471245
+  },
+  {
+    "method": "cache",
+    "nfe": 4,
+    "guidance": 3.0,
+    "psnr": 5.6326187560140895,
+    "mse": 0.27344805374741554,
+    "gflops": 0.10890276,
+    "throughput_ips": 838.6943660902616
+  },
+  {
+    "method": "cache",
+    "nfe": 4,
+    "guidance": 7.5,
+    "psnr": 5.631943607640265,
+    "mse": 0.2734909616410732,
+    "gflops": 0.10890276,
+    "throughput_ips": 846.3977014854946
+  },
+  {
+    "method": "cache",
+    "nfe": 4,
+    "guidance": 10.0,
+    "psnr": 5.631566952899825,
+    "mse": 0.27351490035653114,
+    "gflops": 0.10890276,
+    "throughput_ips": 846.9825631839966
+  },
+  {
+    "method": "cache",
+    "nfe": 4,
+    "guidance": 12.0,
+    "psnr": 5.63126480847984,
+    "mse": 0.27353410795331,
+    "gflops": 0.10890276,
+    "throughput_ips": 848.414739798782
+  },
+  {
+    "method": "cache",
+    "nfe": 6,
+    "guidance": 1.0,
+    "psnr": 5.6292078996870645,
+    "mse": 0.27366235479712486,
+    "gflops": 0.110169144,
+    "throughput_ips": 677.3849293670186
+  },
+  {
+    "method": "cache",
+    "nfe": 6,
+    "guidance": 3.0,
+    "psnr": 5.629157368053251,
+    "mse": 0.27366575226187706,
+    "gflops": 0.110169144,
+    "throughput_ips": 676.1257734674865
+  },
+  {
+    "method": "cache",
+    "nfe": 6,
+    "guidance": 7.5,
+    "psnr": 5.629014519719043,
+    "mse": 0.27367524802684784,
+    "gflops": 0.110169144,
+    "throughput_ips": 680.3835258757002
+  },
+  {
+    "method": "cache",
+    "nfe": 6,
+    "guidance": 10.0,
+    "psnr": 5.628954760700611,
+    "mse": 0.27367929369211197,
+    "gflops": 0.110169144,
+    "throughput_ips": 681.214895855362
+  },
+  {
+    "method": "cache",
+    "nfe": 6,
+    "guidance": 12.0,
+    "psnr": 5.62890770239142,
+    "mse": 0.27368250116705894,
+    "gflops": 0.110169144,
+    "throughput_ips": 683.0149308808784
+  },
+  {
+    "method": "cache",
+    "nfe": 8,
+    "guidance": 1.0,
+    "psnr": 5.620063235008887,
+    "mse": 0.27423838898539543,
+    "gflops": 0.111435528,
+    "throughput_ips": 568.1738814410174
+  },
+  {
+    "method": "cache",
+    "nfe": 8,
+    "guidance": 3.0,
+    "psnr": 5.620034473788284,
+    "mse": 0.2742405831813812,
+    "gflops": 0.111435528,
+    "throughput_ips": 567.5516148130815
+  },
+  {
+    "method": "cache",
+    "nfe": 8,
+    "guidance": 7.5,
+    "psnr": 5.6198792294326845,
+    "mse": 0.274251252412796,
+    "gflops": 0.111435528,
+    "throughput_ips": 567.473027578047
+  },
+  {
+    "method": "cache",
+    "nfe": 8,
+    "guidance": 10.0,
+    "psnr": 5.619760664120613,
+    "mse": 0.2742592319846153,
+    "gflops": 0.111435528,
+    "throughput_ips": 564.8288058635713
+  },
+  {
+    "method": "cache",
+    "nfe": 8,
+    "guidance": 12.0,
+    "psnr": 5.61965148795864,
+    "mse": 0.2742665186524391,
+    "gflops": 0.111435528,
+    "throughput_ips": 568.5114122651047
+  },
+  {
+    "method": "loraprop",
+    "nfe": 4,
+    "guidance": 1.0,
+    "psnr": 5.63291959271669,
+    "mse": 0.27342893555760384,
+    "gflops": 0.10890276,
+    "throughput_ips": 761.7361954330906
+  },
+  {
+    "method": "loraprop",
+    "nfe": 4,
+    "guidance": 3.0,
+    "psnr": 5.6326187560140895,
+    "mse": 0.27344805374741554,
+    "gflops": 0.10890276,
+    "throughput_ips": 765.9331848474875
+  },
+  {
+    "method": "loraprop",
+    "nfe": 4,
+    "guidance": 7.5,
+    "psnr": 5.631943607640265,
+    "mse": 0.2734909616410732,
+    "gflops": 0.10890276,
+    "throughput_ips": 763.8365321112387
+  },
+  {
+    "method": "loraprop",
+    "nfe": 4,
+    "guidance": 10.0,
+    "psnr": 5.631566952899825,
+    "mse": 0.27351490035653114,
+    "gflops": 0.10890276,
+    "throughput_ips": 762.5032436220222
+  },
+  {
+    "method": "loraprop",
+    "nfe": 4,
+    "guidance": 12.0,
+    "psnr": 5.63126480847984,
+    "mse": 0.27353410795331,
+    "gflops": 0.10890276,
+    "throughput_ips": 763.5953490516041
+  },
+  {
+    "method": "loraprop",
+    "nfe": 6,
+    "guidance": 1.0,
+    "psnr": 5.629196535020384,
+    "mse": 0.2736630514264107,
+    "gflops": 0.110169144,
+    "throughput_ips": 543.9862498666116
+  },
+  {
+    "method": "loraprop",
+    "nfe": 6,
+    "guidance": 3.0,
+    "psnr": 5.629146472309019,
+    "mse": 0.27366645261645317,
+    "gflops": 0.110169144,
+    "throughput_ips": 543.616648713796
+  },
+  {
+    "method": "loraprop",
+    "nfe": 6,
+    "guidance": 7.5,
+    "psnr": 5.629003927922887,
+    "mse": 0.27367591857910156,
+    "gflops": 0.110169144,
+    "throughput_ips": 545.5290004784795
+  },
+  {
+    "method": "loraprop",
+    "nfe": 6,
+    "guidance": 10.0,
+    "psnr": 5.628944354335173,
+    "mse": 0.2736799642443657,
+    "gflops": 0.110169144,
+    "throughput_ips": 544.9298776753391
+  },
+  {
+    "method": "loraprop",
+    "nfe": 6,
+    "guidance": 12.0,
+    "psnr": 5.628897298269519,
+    "mse": 0.2736831568181515,
+    "gflops": 0.110169144,
+    "throughput_ips": 542.7735723224492
+  },
+  {
+    "method": "loraprop",
+    "nfe": 8,
+    "guidance": 1.0,
+    "psnr": 5.620042971352572,
+    "mse": 0.2742396779358387,
+    "gflops": 0.111435528,
+    "throughput_ips": 422.88084198437025
+  },
+  {
+    "method": "loraprop",
+    "nfe": 8,
+    "guidance": 3.0,
+    "psnr": 5.620014209919808,
+    "mse": 0.2742418684065342,
+    "gflops": 0.111435528,
+    "throughput_ips": 420.0013379425052
+  },
+  {
+    "method": "loraprop",
+    "nfe": 8,
+    "guidance": 7.5,
+    "psnr": 5.6198590868293,
+    "mse": 0.2742525301873684,
+    "gflops": 0.111435528,
+    "throughput_ips": 422.42632531989807
+  },
+  {
+    "method": "loraprop",
+    "nfe": 8,
+    "guidance": 10.0,
+    "psnr": 5.619740762895859,
+    "mse": 0.2742604948580265,
+    "gflops": 0.111435528,
+    "throughput_ips": 422.78160341797195
+  },
+  {
+    "method": "loraprop",
+    "nfe": 8,
+    "guidance": 12.0,
+    "psnr": 5.619631468332106,
+    "mse": 0.2742677815258503,
+    "gflops": 0.111435528,
+    "throughput_ips": 422.28046182699273
+  }
+]

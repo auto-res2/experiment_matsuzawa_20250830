@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 154, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 148, in main
+    export_light_onnx(model, outfile=os.path.join(out_dir, "unet_light.onnx"), image_size=cfg.get("image_size", 32))
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py", line 347, in export_light_onnx
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+             ^^^^^
+UnboundLocalError: cannot access local variable 'torch' where it is not associated with a value
