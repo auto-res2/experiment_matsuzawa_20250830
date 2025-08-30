@@ -1,0 +1,38 @@
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py:170: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler(enabled=(tcfg.amp_dtype in (torch.float16, torch.bfloat16))) if hasattr(torch.cuda, 'amp') else None
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:472: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=True, dtype=dtype):
+/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
+  self.gen = func(*args, **kwds)
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py:200: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=True, dtype=tcfg.amp_dtype):
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 308, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 276, in main
+    res = run_condition(seed, run, L, method)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 201, in run_condition
+    logits = model(x)
+             ^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py", line 394, in forward
+    logits = self.lm_head(self.norm(x))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/linear.py", line 125, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Deterministic behavior was enabled with either `torch.use_deterministic_algorithms(True)` or `at::Context::setDeterministicAlgorithms(true)`, but this operation is not deterministic because it uses CuBLAS and you have CUDA >= 10.2. To enable deterministic behavior in this case, you must set an environment variable before running your PyTorch application: CUBLAS_WORKSPACE_CONFIG=:4096:8 or CUBLAS_WORKSPACE_CONFIG=:16:8. For more information, go to https://docs.nvidia.com/cuda/cublas/index.html#results-reproducibility
