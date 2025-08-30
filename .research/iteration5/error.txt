@@ -1,0 +1,64 @@
+Generating test split:   0%|          | 0/4358 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 4358/4358 [00:00<00:00, 592140.23 examples/s]
+Generating train split:   0%|          | 0/1801350 [00:00<?, ? examples/s]Generating train split:   6%|▌         | 107000/1801350 [00:00<00:01, 1059425.21 examples/s]Generating train split:  12%|█▏        | 220000/1801350 [00:00<00:01, 1098634.47 examples/s]Generating train split:  19%|█▉        | 344000/1801350 [00:00<00:01, 1161193.14 examples/s]Generating train split:  29%|██▉       | 522000/1801350 [00:00<00:01, 1169976.67 examples/s]Generating train split:  36%|███▌      | 647000/1801350 [00:00<00:00, 1164878.51 examples/s]Generating train split:  43%|████▎     | 770000/1801350 [00:00<00:00, 1183975.04 examples/s]Generating train split:  52%|█████▏    | 931675/1801350 [00:00<00:00, 1136280.45 examples/s]Generating train split:  59%|█████▉    | 1058675/1801350 [00:00<00:00, 1169398.84 examples/s]Generating train split:  69%|██████▊   | 1237675/1801350 [00:01<00:00, 1173387.36 examples/s]Generating train split:  79%|███████▊  | 1414675/1801350 [00:01<00:00, 1172056.73 examples/s]Generating train split:  88%|████████▊ | 1590675/1801350 [00:01<00:00, 1171102.59 examples/s]Generating train split:  98%|█████████▊| 1769675/1801350 [00:01<00:00, 1176996.33 examples/s]Generating train split: 100%|██████████| 1801350/1801350 [00:01<00:00, 1165808.39 examples/s]
+Generating validation split:   0%|          | 0/3760 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 3760/3760 [00:00<00:00, 779448.58 examples/s]
+Token indices sequence length is longer than the specified maximum sequence length for this model (286657 > 1024). Running this sequence through the model will result in indexing errors
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py:498: FutureWarning: The attribute `use_cuda` will be deprecated soon, please use ``use_device = 'cuda'`` instead.
+  with torch.autograd.profiler.profile(use_cuda=True) as prof:
+`loss_type=None` was set in the config but it is unrecognized. Using the default loss: `ForCausalLMLoss`.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 145, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 140, in main
+    artifacts = run_experiments(eval_cfg)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py", line 750, in run_experiments
+    metrics, power_df = run_inference_epoch(
+                        ^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py", line 641, in run_inference_epoch
+    loss, ppl = compute_loss_and_ppl(model, input_ids)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py", line 489, in compute_loss_and_ppl
+    out = model(input_ids=input_ids, labels=labels)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/transformers/models/gpt2/modeling_gpt2.py", line 1070, in forward
+    transformer_outputs = self.transformer(
+                          ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/transformers/models/gpt2/modeling_gpt2.py", line 927, in forward
+    outputs = block(
+              ^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/transformers/modeling_layers.py", line 94, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/transformers/models/gpt2/modeling_gpt2.py", line 414, in forward
+    attn_output, self_attn_weights = self.attn(
+                                     ^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: SDPAWrapper.forward() got an unexpected keyword argument 'past_key_values'
