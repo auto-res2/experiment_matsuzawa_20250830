@@ -6,5 +6,82 @@
     "efficient attention GPU",
     "attention kernel energy",
     "low-power transformer attention"
+  ],
+  "research_study_list": [
+    {
+      "title": "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+    },
+    {
+      "title": "FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning"
+    },
+    {
+      "title": "Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention"
+    },
+    {
+      "title": "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision"
+    },
+    {
+      "title": "Transformer Quality in Linear Time"
+    },
+    {
+      "title": "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+    },
+    {
+      "title": "FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning"
+    },
+    {
+      "title": "Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention"
+    },
+    {
+      "title": "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision"
+    },
+    {
+      "title": "Transformer Quality in Linear Time"
+    },
+    {
+      "title": "FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning"
+    },
+    {
+      "title": "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+    },
+    {
+      "title": "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision"
+    },
+    {
+      "title": "EL-Attention: Memory Efficient Lossless Attention for Generation"
+    },
+    {
+      "title": "Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level"
+    },
+    {
+      "title": "Kernel Multimodal Continuous Attention"
+    },
+    {
+      "title": "KDEformer: Accelerating Transformers via Kernel Density Estimation"
+    },
+    {
+      "title": "Nonlocal Attention Operator: Materializing Hidden Knowledge Towards Interpretable Physics Discovery"
+    },
+    {
+      "title": "FourierFormer: Transformer Meets Generalized Fourier Integral Theorem"
+    },
+    {
+      "title": "Energy Transformer"
+    },
+    {
+      "title": "EcoFormer: Energy-Saving Attention with Linear Complexity"
+    },
+    {
+      "title": "EcoFormer: Energy-Saving Attention with Linear Complexity"
+    },
+    {
+      "title": "Low-Rank Bottleneck in Multi-head Attention Models"
+    },
+    {
+      "title": "Adder Attention for Vision Transformer"
+    },
+    {
+      "title": "Linear Log-Normal Attention with Unbiased Concentration"
+    }
   ]
 }
