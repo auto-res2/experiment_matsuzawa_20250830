@@ -3,7 +3,7 @@
 Training utilities for LoRA-Prop (+ Time-Warp) with a lightweight, toy setup.
 - Implements a tiny backbone that emits per-layer features across a synthetic time-grid.
 - Trains rank-r LoRA adapters to extrapolate features from the nearest previous key-step.
-- Saves trained adapters to the models directory and a training loss curve PDF to .research/iteration9/images.
+- Saves trained adapters to the models directory and a training loss curve PDF to .research/iteration10/images.
 
 Notes
 - This file avoids heavy dependencies and can run on CPU/GPU. It is designed to be fast for a quick test.
@@ -208,7 +208,7 @@ class TrainConfig:
     total_steps: int = 10
     key_steps: Tuple[int, ...] = (2, 5, 8)
     device: str = "cpu"
-    images_out_dir: str = ".research/iteration9/images"
+    images_out_dir: str = ".research/iteration10/images"
     models_out_dir: str = "models"
     model_name: str = "loraprop_toy.pt"
 

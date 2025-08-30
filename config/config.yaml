@@ -15,6 +15,6 @@ train:
 
 seeds: [0, 1]
 
-images_out_dir: .research/iteration9/images
+images_out_dir: .research/iteration10/images
 models_out_dir: models
 models_ckpt_name: loraprop_toy.pt

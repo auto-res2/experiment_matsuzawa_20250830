@@ -3,7 +3,7 @@
 Preprocessing utilities: Time-Warp key-step discovery and ΔF computation.
 - Provides generic ΔF heatmap computation and greedy key-step selection.
 - Includes a toy pipeline to generate features for quick tests.
-- Saves all figures as PDF under .research/iteration9/images.
+- Saves all figures as PDF under .research/iteration10/images.
 """
 
 import os
@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import matplotlib
 matplotlib.use("Agg")
@@ -107,7 +108,7 @@ def save_heatmap_pdf(deltaF: np.ndarray, key_steps: List[int], out_pdf: str, tit
     plt.close()
 
 
-def timewarp_discover_toy(n_steps: int = 10, K: int = 3, image_shape: Tuple[int, int] = (64, 64), images_out_dir: str = ".research/iteration9/images") -> List[int]:
+def timewarp_discover_toy(n_steps: int = 10, K: int = 3, image_shape: Tuple[int, int] = (64, 64), images_out_dir: str = ".research/iteration10/images") -> List[int]:
     """Runs a toy ΔF computation and returns selected key steps. Saves a PDF heatmap."""
     ensure_dir(images_out_dir)
     set_seed(123)
@@ -119,10 +120,10 @@ def timewarp_discover_toy(n_steps: int = 10, K: int = 3, image_shape: Tuple[int,
             self.conv2 = nn.Conv2d(c, c, 3, padding=1)
             self.gate = nn.Linear(1, c)
         def forward(self, x, t):
-            h = torch.silu(self.conv1(x))
+            h = F.silu(self.conv1(x))
             g = self.gate(t.view(-1,1)).view(-1, h.shape[1], 1, 1)
-            f1 = torch.silu(h + g)
-            f2 = torch.silu(self.conv2(f1))
+            f1 = F.silu(h + g)
+            f2 = F.silu(self.conv2(f1))
             return {"down_0": f1, "down_1": f2}
 
     B = 4
