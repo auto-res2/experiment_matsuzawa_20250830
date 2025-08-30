@@ -1,1 +1,7 @@
-airas-template
+# LoRA-Prop: Time-Warped Low-Rank Feature Propagation for Extreme Low-Step Diffusion
+> ⚠️ **NOTE:** This research is an automatic research using AIRAS.
+## Abstract
+We address a central bottleneck in accelerating diffusion models: in the extreme low-step regime (three to eight function evaluations), coarse ODE solvers incur truncation and stability errors while cache-based encoder reuse falters because consecutive states are no longer similar. We propose LoRA-Prop with Time-Warp, a plug-in that preserves base checkpoints and avoids heavy teacher–student distillation. Time-Warp discovers information-rich key steps by a dry pass that measures per-layer feature changes, and invokes the full UNet only at these steps. At non-key steps, LoRA-Prop linearly extrapolates intermediate features via tiny, time-conditioned low-rank adapters, enabling a partial forward that is about ten percent of the UNet FLOPs. Adapters are trained once on a small corpus, constitute less than one percent parameters, can run in INT8, and are model-agnostic. We detail a reproducible evaluation on SD-1.5 and DiT-XL/2 with COCO and ImageNet, including statistical testing, ablations (rank, key-step schedules, INT8), FLOP accounting, and mobile deployment. A toy run exercises the pipeline end-to-end: LoRA-Prop improves throughput over the full model but matches cache-only MSE, motivating full-scale experiments to reveal benefits under realistic low-step conditions.
+
+- [Research history](https://github.com/auto-res2/experiment_matsuzawa_20250830/blob/develop-2/.research/research_history.json)
+- [GitHub Pages](https://auto-res2.github.io/experiment_matsuzawa_20250830/branches/develop-2/index.html)
