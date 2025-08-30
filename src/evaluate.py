@@ -1,397 +1,174 @@
+from __future__ import annotations
 import os
-import math
-import time
-from typing import Dict, List, Optional
+from typing import List, Dict, Any, Tuple
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+except Exception:
+    plt = None
+    sns = None
 
-from .train import (
-    TinyUNetSummarizer,
-    ToyScheduler,
-    LoRAProp,
-    build_cond_vec,
-)
-
-# ----------------------------
-# Sampler and helpers
-# ----------------------------
-
-def ensure_dir(path: str):
-    os.makedirs(path, exist_ok=True)
+from .preprocess import SimpleDiffusionTeacher, set_seed
+from .train import LoRAPropLightPath
 
 
-def classifier_free_guidance(eps_uncond, eps_cond, guidance_scale: float = 7.5):
-    return eps_uncond + guidance_scale * (eps_cond - eps_uncond)
+def _ensure_dir(p: str):
+    os.makedirs(p, exist_ok=True)
 
 
-def build_time_grid(n_probe: int, total_steps: int, key_indices: List[int]) -> List[int]:
-    base = np.linspace(0, n_probe-1, total_steps, dtype=int).tolist()
-    merged = sorted(set(base).union(set(key_indices)))
-    if len(merged) > total_steps:
-        extras = [i for i in merged if i not in key_indices]
-        while len(merged) > total_steps and extras:
-            merged.remove(extras.pop(0))
-    while len(merged) < total_steps:
-        for k in key_indices:
-            if len(merged) >= total_steps:
-                break
-            cand = min(k+1, n_probe-1)
-            if cand not in merged:
-                merged.append(cand)
-        merged = sorted(set(merged))
-    return sorted(merged)
+def eval_eps_prediction(light: LoRAPropLightPath,
+                        teacher: SimpleDiffusionTeacher,
+                        keys_1based: List[int],
+                        T: int,
+                        batch: int,
+                        device: str,
+                        save_dir_pdf: str) -> Dict[str, Any]:
+    set_seed(321)
+    dev = torch.device(device)
+    _ensure_dir(save_dir_pdf)
 
+    teacher = teacher.to(dev).eval()
+    light = light.to(dev).eval()
 
-def run_hybrid_sampling(model: TinyUNetSummarizer,
-                        lora_prop: LoRAProp,
-                        scheduler: ToyScheduler,
-                        x_T: torch.Tensor,
-                        cond_vec: torch.Tensor,
-                        key_indices: List[int],
-                        total_steps: int = 6,
-                        method: str = "loraprop",
-                        guidance_scale: float = 7.5,
-                        verbose: bool = False) -> Dict[str, torch.Tensor]:
-    device = x_T.device
-    n_probe = scheduler.n_steps
-    time_grid = build_time_grid(n_probe, total_steps, key_indices)
-    key_set = set(key_indices)
-    x = x_T
-    prev_summaries = None
-    eps_trace = []
-    comp_stats = {"full_steps": 0, "light_steps": 0}
-    for idx in time_grid:
-        t_batch = torch.full((x.size(0),), float(scheduler.timesteps[idx]), device=device)
-        # Ensure the very first step uses heavy path to initialize summaries
-        if prev_summaries is None or idx in key_set or method == "full":
-            eps_uc, sums_uc = model(x, t_batch, torch.zeros_like(cond_vec), light=False)
-            eps_c, sums_c = model(x, t_batch, cond_vec, light=False)
-            prev_summaries = sums_c
-            comp_stats["full_steps"] += 1
-        else:
-            if method == "cache":
-                sums_hat = prev_summaries
-            elif method == "loraprop":
-                eligible = [k for k in key_indices if k <= idx]
-                prev_k = max(eligible) if eligible else idx
-                dt = torch.full((x.size(0),), float(idx - prev_k), device=device)
-                dt = dt / (n_probe-1)
-                sums_hat = lora_prop(prev_summaries, dt)
-            else:
-                raise ValueError(f"Unknown method {method}")
-            eps_uc, _ = model(x, t_batch, torch.zeros_like(cond_vec), summaries=sums_hat, light=True)
-            eps_c, _ = model(x, t_batch, cond_vec, summaries=sums_hat, light=True)
-            comp_stats["light_steps"] += 1
-        eps = classifier_free_guidance(eps_uc, eps_c, guidance_scale)
-        eps_trace.append(eps.detach())
-        x = scheduler.ddim_step(x, int(scheduler.timesteps[idx]), eps)
-        if verbose:
-            print(f"[Hybrid] step {idx} (key={idx in key_set}), x.norm={x.norm().item():.3f}")
-    return {"x_0": x, "eps_trace": eps_trace, "comp_stats": comp_stats, "time_grid": time_grid}
+    time_grid = torch.linspace(0.0, 1.0, steps=T, device=dev)
 
-
-# ----------------------------
-# FLOPs estimation (toy)
-# ----------------------------
-
-def conv2d_flops(h, w, cin, cout, k, groups=1):
-    return 2 * h * w * cin * cout * (k*k) / groups
-
-
-def estimate_model_flops(model: TinyUNetSummarizer, image_size: int = 32) -> Dict[str, float]:
-    H = W = image_size
-    base = 32
-    total = conv2d_flops(H, W, 3, base, 3)
-    total += conv2d_flops(H, W, base, base, 3) + conv2d_flops(H, W, base, base, 3) + conv2d_flops(H, W, base, base, 3)
-    H //= 2
-    total += conv2d_flops(H*2, W*2, base, base*2, 3) + conv2d_flops(H*2, W*2, base*2, base*2, 3) + conv2d_flops(H*2, W*2, base*2, base*2, 3)
-    H //= 2
-    total += conv2d_flops(H, W, base*2, base*2, 3)
-    total += conv2d_flops(H, W, base*2, base, 2)
-    total += conv2d_flops(H*2, W*2, base*3, base, 3) + conv2d_flops(H*2, W*2, base, base, 3)
-    H *= 2
-    total += conv2d_flops(H, W, base, base, 2)
-    total += conv2d_flops(H, W, base*2, base, 3) + conv2d_flops(H, W, base, base, 3)
-    total += conv2d_flops(H, W, base, base, 3)
-    total += H*W*base*base*2
-    return {"heavy_forward_flops": total}
-
-
-def linear_flops(m, n):
-    return 2 * m * n
-
-
-def estimate_lora_flops(lora: LoRAProp, batch_size: int = 1) -> float:
-    total = 0.0
-    for ad in lora.adapters:
-        d = ad.sum_dim
-        r = ad.r
-        total += batch_size * (linear_flops(d, r) + linear_flops(r, d))
-    return total
-
-
-# ----------------------------
-# Metrics and plotting
-# ----------------------------
-
-def psnr_tensor(x: torch.Tensor, y: torch.Tensor) -> float:
-    x = x.detach().cpu().numpy()
-    y = y.detach().cpu().numpy()
-    mse = np.mean((x - y) ** 2)
-    if mse <= 1e-12:
-        return 100.0
-    return 20 * math.log10(1.0 / math.sqrt(mse))
-
-
-def run_quality_eval(model,
-                     lora,
-                     scheduler,
-                     dataset,
-                     key_indices,
-                     cfg_scales: List[float],
-                     nfes: List[int],
-                     methods: List[str],
-                     batch_size: int = 8,
-                     image_size: int = 32,
-                     save_dir: str = ".research/iteration2/images",
-                     save_prefix: str = "exp1"):
-    ensure_dir(save_dir)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
-    results = []
-    flops_heavy = estimate_model_flops(model, image_size=image_size)["heavy_forward_flops"]
-    for method in methods:
-        for nfe in nfes:
-            for gs in cfg_scales:
-                t0 = time.time()
-                cum_psnr = 0.0
-                cum_mse = 0.0
-                N = 0
-                comp_full = 0
-                comp_light = 0
-                for img, cls, prompt, tok_len in loader:
-                    B = img.size(0)
-                    img = img.to(device)
-                    cond = build_cond_vec(cls, tok_len, device)
-                    x = torch.randn_like(img)
-                    out = run_hybrid_sampling(model, lora, scheduler, x, cond, key_indices, total_steps=nfe, method=method, guidance_scale=gs)
-                    x0 = out["x_0"].clamp(0,1)
-                    psnr_val = psnr_tensor(x0, img)
-                    mse = F.mse_loss(x0, img).item()
-                    cum_psnr += psnr_val * B
-                    cum_mse += mse * B
-                    N += B
-                    comp_full += out["comp_stats"]["full_steps"]
-                    comp_light += out["comp_stats"]["light_steps"]
-                t1 = time.time()
-                light_flops = estimate_lora_flops(lora, batch_size=batch_size) + 1e7
-                avg_full = comp_full / max(1, len(loader))
-                avg_light = comp_light / max(1, len(loader))
-                gflops_per_img = ((avg_full * flops_heavy) + (avg_light * light_flops)) / 1e9 / batch_size
-                it_per_sec = (N / (t1 - t0 + 1e-9))
-                results.append({
-                    "method": method,
-                    "nfe": nfe,
-                    "guidance": gs,
-                    "psnr": cum_psnr / N,
-                    "mse": cum_mse / N,
-                    "gflops": gflops_per_img,
-                    "throughput_ips": it_per_sec
-                })
-                print(f"[Eval] method={method}, nfe={nfe}, gs={gs}: PSNR={results[-1]['psnr']:.3f}, MSE={results[-1]['mse']:.5f}, GFLOPs/img~{results[-1]['gflops']:.3f}, ips~{results[-1]['throughput_ips']:.2f}")
-    # Plot Quality vs GFLOPs frontier (PSNR vs GFLOPs)
-    plt.figure(figsize=(6,4))
-    for method in methods:
-        xs = [r["gflops"] for r in results if r["method"]==method]
-        ys = [r["psnr"] for r in results if r["method"]==method]
-        labels = [f"NFE={r['nfe']} gs={r['guidance']}" for r in results if r["method"]==method]
-        plt.scatter(xs, ys, label=method)
-        for x, y, lab in zip(xs, ys, labels):
-            plt.annotate(lab, (x, y), fontsize=7)
-    plt.xlabel("GFLOPs / image (estimated)")
-    plt.ylabel("PSNR (dB) ↑")
-    plt.title("Quality vs Compute Frontier (Toy)")
-    plt.legend()
-    plt.tight_layout()
-    fig_name = os.path.join(save_dir, f"{save_prefix}_quality_vs_gflops_loraprop.pdf")
-    plt.savefig(fig_name, bbox_inches="tight")
-    plt.close()
-    print(f"[Eval] Saved plot -> {fig_name}")
-
-    # Robustness vs guidance (line chart for best NFE per method)
-    best_nfe = max(nfes)
-    plt.figure(figsize=(6,4))
-    for method in methods:
-        xs = []
-        ys = []
-        for gs in sorted(set(cfg_scales)):
-            vals = [r for r in results if r["method"]==method and r["nfe"]==best_nfe and r["guidance"]==gs]
-            if len(vals)>0:
-                xs.append(gs)
-                ys.append(vals[0]["psnr"])
-        plt.plot(xs, ys, marker="o", label=method)
-    plt.xlabel("Guidance scale")
-    plt.ylabel("PSNR (dB)")
-    plt.title(f"Robustness vs Guidance (NFE={best_nfe})")
-    plt.legend()
-    plt.tight_layout()
-    fig_name = os.path.join(save_dir, f"{save_prefix}_robustness_guidance.pdf")
-    plt.savefig(fig_name, bbox_inches="tight")
-    plt.close()
-    print(f"[Eval] Saved plot -> {fig_name}")
-
-    return results
-
-
-def feature_accuracy_probe(model,
-                           lora,
-                           scheduler,
-                           dataset,
-                           key_indices,
-                           n_pairs: int = 50,
-                           batch_size: int = 8,
-                           image_size: int = 32,
-                           save_dir: str = ".research/iteration2/images",
-                           save_prefix: str = "exp2"):
-    ensure_dir(save_dir)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-    model.eval()
-    mse_per_layer = []
-    cos_per_layer = []
+    # Evaluate MSE across steps for LoRA-Prop vs cache-only vs prev-eps
+    methods = ['LoRA-Prop', 'Cache-Only', 'Prev-Eps']
+    mse_per_step = {m: [] for m in methods}
 
     with torch.no_grad():
-        cnt = 0
-        for _, (img, cls, prompt, tok_len) in enumerate(loader):
-            if cnt >= n_pairs:
-                break
-            img = img.to(device)
-            cond = build_cond_vec(cls, tok_len, device)
-            probe_steps = scheduler.n_steps
-            j = np.random.randint(1, probe_steps-1)
-            prev_keys = [k for k in key_indices if k <= j]
-            if not prev_keys:
+        for t in range(1, T+1):
+            # Skip key steps in error aggregation (they would be computed by full UNet in real run)
+            if t in set(keys_1based):
+                # Put tiny zero to keep arrays lengths equal
+                for m in methods:
+                    mse_per_step[m].append(0.0)
                 continue
-            k = max(prev_keys)
-            t_j = torch.full((img.size(0),), float(scheduler.timesteps[j]), device=device)
-            t_k = torch.full((img.size(0),), float(scheduler.timesteps[k]), device=device)
-            x_t, _ = scheduler.add_noise(img, t_j.long())
-            _, sums_k = model(x_t, t_k, cond, light=False)
-            _, sums_j = model(x_t, t_j, cond, light=False)
-            dt = torch.full((img.size(0),), float(j-k) / (probe_steps-1), device=device)
-            sums_hat = lora(sums_k, dt)
-            for L, (a, b) in enumerate(zip(sums_hat, sums_j)):
-                mse = F.mse_loss(a, b, reduction='mean').item()
-                na = F.normalize(a, dim=1)
-                nb = F.normalize(b, dim=1)
-                cos = (na*nb).sum(dim=1).mean().item()
-                mse_per_layer.append((L, mse))
-                cos_per_layer.append((L, cos))
-            cnt += img.size(0)
 
-    layers = sorted(set([i for i,_ in mse_per_layer]))
-    avg_mse = [np.mean([m for L,m in mse_per_layer if L==i]) for i in layers]
-    avg_cos = [np.mean([c for L,c in cos_per_layer if L==i]) for i in layers]
+            # Build batch of latents and corresponding prev keys
+            latents = torch.randn(batch, 4, 32, 32, device=dev)
+            prev_keys = []
+            for _ in range(batch):
+                prevs = [k for k in keys_1based if k < t]
+                prev_keys.append(max(prevs) if len(prevs) > 0 else keys_1based[0])
+            prev_keys = torch.tensor(prev_keys, device=dev)
+            dt = (torch.full((batch,), float(t), device=dev) - prev_keys.float()) / float(T)
 
-    # Plots
-    plt.figure(figsize=(5,3))
-    plt.bar([str(i) for i in layers], avg_mse)
-    plt.xlabel("Layer index")
-    plt.ylabel("MSE")
-    plt.title("Feature MSE per layer (LoRA-Prop)")
-    plt.tight_layout()
-    out1 = os.path.join(save_dir, f"{save_prefix}_feature_mse_layers.pdf")
-    plt.savefig(out1, bbox_inches="tight")
-    plt.close()
-    print(f"[Microbench] Saved layer-wise feature MSE -> {out1}")
+            eps_target_list = []
+            feats_prev_all = []
+            for b in range(batch):
+                eps_t, _ = teacher(latents[b:b+1], time_grid[t-1])
+                eps_target_list.append(eps_t)
+                eps_prev, feats_prev = teacher(latents[b:b+1], time_grid[prev_keys[b]-1])
+                feats_prev_all.append(feats_prev)
+            eps_target = torch.cat(eps_target_list, dim=0)
+            # Collate features per scale
+            n_scales = len(teacher.feature_channels)
+            cached_feats = []
+            for s in range(n_scales):
+                cached_feats.append(torch.cat([feats_prev_all[b][s] for b in range(batch)], dim=0))
 
-    plt.figure(figsize=(5,3))
-    plt.bar([str(i) for i in layers], avg_cos)
-    plt.xlabel("Layer index")
-    plt.ylabel("Cosine sim")
-    plt.title("Feature cosine similarity per layer")
-    plt.tight_layout()
-    out2 = os.path.join(save_dir, f"{save_prefix}_feature_cosine_layers.pdf")
-    plt.savefig(out2, bbox_inches="tight")
-    plt.close()
-    print(f"[Microbench] Saved layer-wise cosine -> {out2}")
+            # LoRA-Prop
+            eps_hat = light(cached_feats, dt, zero_summary=False)
+            # Cache-only baseline (zero_summary=True)
+            eps_cache = light(cached_feats, dt, zero_summary=True)
+            # Prev-eps baseline (reuse eps at prev key)
+            eps_prev = []
+            for b in range(batch):
+                eprev, _ = teacher(latents[b:b+1], time_grid[prev_keys[b]-1])
+                eps_prev.append(eprev)
+            eps_prev = torch.cat(eps_prev, dim=0)
 
-    # Estimated FLOPs reduction bar
-    flops = estimate_model_flops(model, image_size=image_size)
-    heavy = flops["heavy_forward_flops"]
-    light = estimate_lora_flops(lora, batch_size=batch_size) + 1e7
-    plt.figure(figsize=(5,3))
-    plt.bar(["full", "non-key"], [heavy/1e9, light/1e9])
-    plt.ylabel("GFLOPs per step")
-    plt.title("Per-step compute: full vs non-key (estimated)")
-    plt.tight_layout()
-    out3 = os.path.join(save_dir, f"{save_prefix}_gflops_reduction.pdf")
-    plt.savefig(out3, bbox_inches="tight")
-    plt.close()
-    print(f"[Microbench] Saved GFLOPs reduction plot -> {out3}")
+            mse_per_step['LoRA-Prop'].append(float(F.mse_loss(eps_hat, eps_target).item()))
+            mse_per_step['Cache-Only'].append(float(F.mse_loss(eps_cache, eps_target).item()))
+            mse_per_step['Prev-Eps'].append(float(F.mse_loss(eps_prev, eps_target).item()))
+
+    # Plot MSE vs timestep
+    if plt is not None:
+        sns.set(style='whitegrid')
+        x = list(range(1, T+1))
+        plt.figure(figsize=(6,4))
+        for m in methods:
+            plt.plot(x, mse_per_step[m], label=m)
+        for k in keys_1based:
+            plt.axvline(k, color='k', linestyle='--', alpha=0.2)
+        plt.xlabel('Timestep (1-based)')
+        plt.ylabel('Epsilon MSE')
+        plt.title('Epsilon prediction error across timesteps')
+        plt.legend()
+        out_pdf = os.path.join(save_dir_pdf, 'epsilon_mse_vs_timestep.pdf')
+        plt.tight_layout(); plt.savefig(out_pdf, bbox_inches='tight'); plt.close()
+        print(f'Saved figure: {out_pdf}')
+
+    # Aggregate
+    agg = {m: float(np.mean(mse_per_step[m])) for m in methods}
+    print("MSE summary:")
+    for m in methods:
+        print(f"  {m:10s}: {agg[m]:.6f}")
 
     return {
-        "avg_layer_mse": avg_mse,
-        "avg_layer_cos": avg_cos,
+        'mse_per_step': mse_per_step,
+        'mse_mean': agg,
+        'keys': keys_1based,
+        'T': T,
     }
 
 
-def export_light_onnx(model: TinyUNetSummarizer, outfile: str = "unet_light.onnx", image_size: int = 32):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device).eval()
-    x = torch.randn(1, 3, image_size, image_size, device=device)
-    cond = torch.randn(1, 32, device=device)
-    base = 32
-    s1 = torch.randn(1, base, device=device)
-    s2 = torch.randn(1, base, device=device)
-    s3 = torch.randn(1, base*2, device=device)
-    s4 = torch.randn(1, base*2, device=device)
-    s5 = torch.randn(1, base, device=device)
-    s6 = torch.randn(1, base, device=device)
-
-    class LightWrapper(torch.nn.Module):
-        def __init__(self, head):
-            super().__init__()
-            self.head = head
-        def forward(self, x_in, cond, s1, s2, s3, s4, s5, s6):
-            return self.head(x_in, [s1, s2, s3, s4, s5, s6], cond)
-
-    wrapper = LightWrapper(model.eps_head).to(device)
+def onnx_export_light(light: LoRAPropLightPath, teacher: SimpleDiffusionTeacher, device: str, save_path: str) -> Dict[str, Any]:
     try:
-        # Use torch.onnx.export directly; avoid creating a local 'torch' via 'import torch.onnx'
-        torch.onnx.export(
-            wrapper, (x, cond, s1, s2, s3, s4, s5, s6), outfile,
-            input_names=["x_in", "cond", "s1","s2","s3","s4","s5","s6"],
-            output_names=["eps"], opset_version=17, dynamic_axes={"x_in":{0:"B"}}
-        )
-        print(f"[ONNX] Exported light path -> {outfile}")
-    except Exception as e:
-        print(f"[ONNX] Export failed: {e}")
+        import onnx
+        import onnxruntime as ort
+    except Exception:
+        print('ONNX not available; skipping export.')
+        return {'exported': False}
 
+    dev = torch.device(device)
+    light = light.to(dev).eval()
 
-def make_additional_figures(results_exp1: List[Dict], save_dir: str = ".research/iteration2/images", save_prefix: str = "exp1"):
-    ensure_dir(save_dir)
-    methods = sorted(set([r["method"] for r in results_exp1]))
-    nfes = sorted(set([r["nfe"] for r in results_exp1]))
-    mat = np.zeros((len(methods), len(nfes)))
-    for i, m in enumerate(methods):
-        for j, n in enumerate(nfes):
-            vals = [r["psnr"] for r in results_exp1 if r["method"]==m and r["nfe"]==n]
-            mat[i, j] = np.mean(vals) if len(vals)>0 else np.nan
-    plt.figure(figsize=(5,3))
-    sns.heatmap(mat, annot=True, xticklabels=nfes, yticklabels=methods, cmap="viridis")
-    plt.xlabel("NFE")
-    plt.ylabel("Method")
-    plt.title("PSNR heatmap (avg over guidance)")
-    plt.tight_layout()
-    outp = os.path.join(save_dir, f"{save_prefix}_psnr_heatmap.pdf")
-    plt.savefig(outp, bbox_inches="tight")
-    plt.close()
-    print(f"[Figures] Saved heatmap -> {outp}")
+    # Create dummy inputs (3 scales)
+    B = 1
+    feats = []
+    Hs = [32, 16, 8]
+    for c, H in zip(teacher.feature_channels, Hs):
+        feats.append(torch.randn(B, c, H, H, device=dev))
+    dt = torch.tensor([0.25], device=dev)
+
+    # Wrap to handle list input
+    class Wrapper(nn.Module):
+        def __init__(self, m: LoRAPropLightPath):
+            super().__init__()
+            self.m = m
+        def forward(self, f0, f1, f2, dt):
+            return self.m([f0, f1, f2], dt)
+
+    wrapper = Wrapper(light).to(dev)
+
+    cpu_inputs = (feats[0].cpu(), feats[1].cpu(), feats[2].cpu(), dt.cpu())
+    out_dir = os.path.dirname(save_path)
+    os.makedirs(out_dir, exist_ok=True)
+
+    torch.onnx.export(wrapper.cpu(), cpu_inputs, save_path,
+                      input_names=['f0','f1','f2','dt'], output_names=['eps'], opset_version=17)
+    print(f'Exported ONNX: {save_path}')
+
+    # Parity check
+    sess = ort.InferenceSession(save_path, providers=['CPUExecutionProvider'])
+    ort_out = sess.run(None, {
+        'f0': cpu_inputs[0].numpy(),
+        'f1': cpu_inputs[1].numpy(),
+        'f2': cpu_inputs[2].numpy(),
+        'dt': cpu_inputs[3].numpy(),
+    })[0]
+    with torch.no_grad():
+        pt_out = wrapper.cpu()(*cpu_inputs).detach().cpu().numpy()
+    mae = float(np.mean(np.abs(ort_out - pt_out)))
+    print(f'ONNX parity MAE: {mae:.6e}')
+    return {'exported': True, 'mae': mae, 'onnx_path': save_path}

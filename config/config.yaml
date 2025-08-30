@@ -1,37 +1,20 @@
-# Default configuration for LoRA-Prop (+ Time-Warp) toy experiments
-# Designed for a quick test on a single GPU/CPU (Tesla T4 friendly)
+# Minimal configuration for the synthetic LoRA-Prop (+ Time-Warp) experiment
+seed: 123
+# Device will default to CUDA if available; override here if needed
+device: cuda
 
-seed: 42
-output_dir: .research/iteration2/images
+# Dry pass for ΔF and key-step discovery
+T_dry: 20         # total steps in the synthetic timeline
+K_keys: 3         # number of key steps to select
+deltaF_batch: 8   # batch size during ΔF dry run
 
-# Data
-train_n: 256
-val_n: 128
-image_size: 32
-batch_size: 16
-num_workers: 0
+# Training LoRA-Prop adapters
+train_iters: 200
+train_lr: 5.0e-4
+train_batch: 8
+rank: 8
 
-# Scheduler
-scheduler_steps: 40
-K: 3  # number of key steps to discover
-
-# LoRA-Prop hyperparameters
-lora_rank: 8
-lora_film_hidden: 32
-lora_alpha: 1.0
-
-# Training
-train_steps: 200
-lr: 0.001
-save_models: true
-
-# Evaluation
-methods: ["full", "cache", "loraprop"]
-nfes: [4, 6, 8]
-cfg_scales: [1.0, 3.0, 7.5, 10.0, 12.0]
-
-# Microbench
-micro_n_pairs: 64
-
-# Deployment
-export_onnx: true
+# Paths
+results_dir: results
+images_dir: .research/iteration6/images
+model_save_path: models/loraprop_lightpath.pt
