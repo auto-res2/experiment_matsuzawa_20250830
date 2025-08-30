@@ -9,7 +9,7 @@ Implements:
 - SDPA patch for GPT-2 attention, with xFormers optional.
 - Dataset pipeline reading from a pre-tokenized token stream saved by preprocess.
 - Robust logging, OOM-safe batch size search, VRAM monitoring.
-- High-quality PDF plots saved to .research/iteration3/images.
+- High-quality PDF plots saved to .research/iteration6/images.
 
 Run context:
 - Orchestrated from src.main (python -m src.main)
@@ -287,7 +287,11 @@ class SDPAWrapper(nn.Module):
         encoder_attention_mask: Optional[torch.Tensor] = None,
         use_cache: bool = False,
         output_attentions: bool = False,
+        past_key_values: Optional[Any] = None,  # accept and ignore to match HF call patterns
+        past_key_value: Optional[Any] = None,   # accept and ignore to match HF call patterns
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]], Optional[torch.Tensor]]:
+        # We ignore past key/value caching and masks for simplicity; causal mask is applied via SDPA/xformers.
         bsz, seq, hidden = hidden_states.size()
         qkv = self.c_attn(hidden_states)
         q, k, v = qkv.split(hidden, dim=2)
@@ -345,11 +349,11 @@ class SDPAWrapper(nn.Module):
 
 
 def _get_parent(root: nn.Module, path: str) -> nn.Module:
-    p = root
-    parts = path.split(".")
-    for s in parts[:-1]:
-        p = getattr(p, s)
-    return p
+    # Use built-in traversal to correctly handle ModuleList indices
+    if "." not in path:
+        return root
+    parent_path = path.rsplit(".", 1)[0]
+    return root.get_submodule(parent_path)
 
 
 def patch_gpt2_attention(model: nn.Module, backend: str, eafa_ctrl: Optional["EAFAController"]) -> int:

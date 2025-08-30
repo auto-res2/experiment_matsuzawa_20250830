@@ -9,7 +9,7 @@ Run from project root:
 This orchestrates:
 - Preprocessing (token stream generation)
 - Optional training (disabled by default)
-- Evaluation & plotting (saves PDFs to .research/iteration4/images)
+- Evaluation & plotting (saves PDFs to .research/iteration6/images)
 
 Config:
 - A YAML config may be provided at config/config.yaml, or an alternate path via --config.
@@ -77,8 +77,9 @@ def main():
     cfg_dict = load_config(args.config)
 
     # Directories
-    output_dir = Path(cfg_dict.get("output_dir", ".research/iteration4"))
-    images_dir = Path(cfg_dict.get("images_dir", ".research/iteration4/images"))
+    # Enforce images to be saved under .research/iteration6/images as requested
+    output_dir = Path(cfg_dict.get("output_dir", ".research/iteration6"))
+    images_dir = Path(".research/iteration6/images")
     setup_logging(output_dir)
 
     logging.info("CUDA available: %s", torch.cuda.is_available())
