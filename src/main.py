@@ -8,7 +8,7 @@ Pipeline
 1) Preprocess/build dataloaders
 2) Build model (EA-FA or baseline)
 3) Train (optional) and/or Evaluate (energy + PPL)
-4) Save plots (PDF) to .research/iteration1/images
+4) Save plots (PDF) to .research/iteration2/images
 
 All standard output prints detailed results.
 """
@@ -37,7 +37,7 @@ from .evaluate import evaluate_perplexity, plot_energy_bar
 
 # Directories
 ROOT = Path(os.getcwd()).resolve()
-IMAGES_DIR = ROOT / ".research" / "iteration1" / "images"
+IMAGES_DIR = ROOT / ".research" / "iteration2" / "images"
 MODEL_DIR = ROOT / "models"
 DATA_DIR = ROOT / "data"
 for d in [IMAGES_DIR, MODEL_DIR, DATA_DIR]:

@@ -16,12 +16,14 @@ from torch.utils.data import Dataset, DataLoader
 
 
 def set_seed(seed: int) -> None:
+    # Ensure cuBLAS reproducibility is configured for deterministic algorithms
+    # Must be set before CUDA ops that use cuBLAS.
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":16:8")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.use_deterministic_algorithms(True)
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
     torch.set_num_threads(max(1, min(8, os.cpu_count() or 1)))
 
 
