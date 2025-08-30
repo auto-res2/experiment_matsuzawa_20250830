@@ -1,0 +1,37 @@
+# Default configuration for LoRA-Prop (+ Time-Warp) toy experiments
+# Designed for a quick test on a single GPU/CPU (Tesla T4 friendly)
+
+seed: 42
+output_dir: .research/iteration1/images
+
+# Data
+train_n: 256
+val_n: 128
+image_size: 32
+batch_size: 16
+num_workers: 0
+
+# Scheduler
+scheduler_steps: 40
+K: 3  # number of key steps to discover
+
+# LoRA-Prop hyperparameters
+lora_rank: 8
+lora_film_hidden: 32
+lora_alpha: 1.0
+
+# Training
+train_steps: 200
+lr: 0.001
+save_models: true
+
+# Evaluation
+methods: ["full", "cache", "loraprop"]
+nfes: [4, 6, 8]
+cfg_scales: [1.0, 3.0, 7.5, 10.0, 12.0]
+
+# Microbench
+micro_n_pairs: 64
+
+# Deployment
+export_onnx: true
