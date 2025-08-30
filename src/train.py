@@ -242,6 +242,8 @@ class TinyUNetSummarizer(nn.Module):
         self.cond_proj = nn.Linear(cond_dim, base)
         self.sum_dims = [base, base, base*2, base*2, base, base]
         self.eps_head = EpsHead(base, cond_dim, self.sum_dims)
+        # Map internal feature channels to image channels for epsilon prediction
+        self.eps_out = nn.Conv2d(base, in_ch, 1)
 
     def forward_heavy(self, x, t_emb, cond) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         h = self.in_conv(x)
@@ -258,7 +260,8 @@ class TinyUNetSummarizer(nn.Module):
         u1 = self.out_conv(u1)
         sum6 = F.adaptive_avg_pool2d(u1, 1).flatten(1)
         summaries = [sum1, sum2, sum3, sum4, sum5, sum6]
-        eps = self.eps_head(u1, summaries, cond)
+        eps_feat = self.eps_head(u1, summaries, cond)
+        eps = self.eps_out(eps_feat)
         return eps, summaries
 
     def forward(self, x, t: torch.Tensor, cond: torch.Tensor, summaries: Optional[List[torch.Tensor]] = None, light: bool = False):
@@ -274,7 +277,8 @@ class TinyUNetSummarizer(nn.Module):
             # Lightweight path: create a small 1x1 conv on the fly
             conv = nn.Conv2d(x.size(1), 32, 1).to(x.device)
             u1 = F.silu(conv(x))
-            eps = self.eps_head(u1, summaries, cond)
+            eps_feat = self.eps_head(u1, summaries, cond)
+            eps = self.eps_out(eps_feat)
             return eps, summaries
 
 

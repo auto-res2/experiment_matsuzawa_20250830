@@ -39,7 +39,8 @@ def main():
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    out_dir = cfg.get("output_dir", ".research/iteration1/images")
+    # Force all outputs (images and artifacts) to this directory as requested
+    out_dir = ".research/iteration3/images"
     os.makedirs(out_dir, exist_ok=True)
 
     set_seed(cfg.get("seed", 42))
