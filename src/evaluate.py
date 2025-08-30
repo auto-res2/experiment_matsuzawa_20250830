@@ -69,7 +69,8 @@ def run_hybrid_sampling(model: TinyUNetSummarizer,
     comp_stats = {"full_steps": 0, "light_steps": 0}
     for idx in time_grid:
         t_batch = torch.full((x.size(0),), float(scheduler.timesteps[idx]), device=device)
-        if idx in key_set or method == "full":
+        # Ensure the very first step uses heavy path to initialize summaries
+        if prev_summaries is None or idx in key_set or method == "full":
             eps_uc, sums_uc = model(x, t_batch, torch.zeros_like(cond_vec), light=False)
             eps_c, sums_c = model(x, t_batch, cond_vec, light=False)
             prev_summaries = sums_c
@@ -78,7 +79,9 @@ def run_hybrid_sampling(model: TinyUNetSummarizer,
             if method == "cache":
                 sums_hat = prev_summaries
             elif method == "loraprop":
-                dt = torch.full((x.size(0),), float(idx - max([k for k in key_indices if k <= idx])), device=device)
+                eligible = [k for k in key_indices if k <= idx]
+                prev_k = max(eligible) if eligible else idx
+                dt = torch.full((x.size(0),), float(idx - prev_k), device=device)
                 dt = dt / (n_probe-1)
                 sums_hat = lora_prop(prev_summaries, dt)
             else:
@@ -157,7 +160,7 @@ def run_quality_eval(model,
                      methods: List[str],
                      batch_size: int = 8,
                      image_size: int = 32,
-                     save_dir: str = ".research/iteration1/images",
+                     save_dir: str = ".research/iteration2/images",
                      save_prefix: str = "exp1"):
     ensure_dir(save_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -255,7 +258,7 @@ def feature_accuracy_probe(model,
                            n_pairs: int = 50,
                            batch_size: int = 8,
                            image_size: int = 32,
-                           save_dir: str = ".research/iteration1/images",
+                           save_dir: str = ".research/iteration2/images",
                            save_prefix: str = "exp2"):
     ensure_dir(save_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -373,7 +376,7 @@ def export_light_onnx(model: TinyUNetSummarizer, outfile: str = "unet_light.onnx
         print(f"[ONNX] Export failed: {e}")
 
 
-def make_additional_figures(results_exp1: List[Dict], save_dir: str = ".research/iteration1/images", save_prefix: str = "exp1"):
+def make_additional_figures(results_exp1: List[Dict], save_dir: str = ".research/iteration2/images", save_prefix: str = "exp1"):
     ensure_dir(save_dir)
     methods = sorted(set([r["method"] for r in results_exp1]))
     nfes = sorted(set([r["nfe"] for r in results_exp1]))

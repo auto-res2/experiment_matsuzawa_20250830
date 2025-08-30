@@ -2,7 +2,7 @@
 # Designed for a quick test on a single GPU/CPU (Tesla T4 friendly)
 
 seed: 42
-output_dir: .research/iteration1/images
+output_dir: .research/iteration2/images
 
 # Data
 train_n: 256

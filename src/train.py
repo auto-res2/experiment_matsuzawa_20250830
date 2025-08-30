@@ -159,10 +159,12 @@ class DownBlock(nn.Module):
         return x, skip
 
 class UpBlock(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, skip_ch: Optional[int] = None):
         super().__init__()
         self.up = nn.ConvTranspose2d(in_ch, out_ch, 2, 2)
-        self.b1 = ConvBlock(out_ch*2, out_ch)
+        if skip_ch is None:
+            skip_ch = out_ch
+        self.b1 = ConvBlock(out_ch + skip_ch, out_ch)
         self.b2 = ConvBlock(out_ch, out_ch)
     def forward(self, x, skip):
         x = self.up(x)
@@ -231,7 +233,7 @@ class TinyUNetSummarizer(nn.Module):
         self.down1 = DownBlock(base, base)
         self.down2 = DownBlock(base, base*2)
         self.mid = ConvBlock(base*2, base*2)
-        self.up2 = UpBlock(base*2, base)
+        self.up2 = UpBlock(base*2, base, skip_ch=base*2)
         self.up1 = UpBlock(base, base)
         self.out_conv = ConvBlock(base, base)
         self.time_dim = time_dim
@@ -475,4 +477,3 @@ def load_lora(lora: LoRAProp, path: str, map_location=None):
     sd = torch.load(path, map_location=map_location)
     lora.load_state_dict(sd)
     print(f"[Load] LoRA-Prop loaded <- {path}")
-
