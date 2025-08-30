@@ -9,10 +9,10 @@ Run from project root:
 This orchestrates:
 - Preprocessing (token stream generation)
 - Optional training (disabled by default)
-- Evaluation & plotting (saves PDFs to .research/iteration3/images)
+- Evaluation & plotting (saves PDFs to .research/iteration4/images)
 
 Config:
-- A YAML config may be provided at config/experiment.yaml, or an alternate path via --config.
+- A YAML config may be provided at config/config.yaml, or an alternate path via --config.
 - Command-line flags can enable a smoke test with tiny settings.
 """
 
@@ -42,7 +42,7 @@ from .evaluate import (
 )
 
 
-DEFAULT_CONFIG_PATH = "config/experiment.yaml"
+DEFAULT_CONFIG_PATH = "config/config.yaml"
 
 
 def setup_logging(out_dir: Path) -> None:
@@ -77,8 +77,8 @@ def main():
     cfg_dict = load_config(args.config)
 
     # Directories
-    output_dir = Path(cfg_dict.get("output_dir", ".research/iteration3"))
-    images_dir = Path(cfg_dict.get("images_dir", ".research/iteration3/images"))
+    output_dir = Path(cfg_dict.get("output_dir", ".research/iteration4"))
+    images_dir = Path(cfg_dict.get("images_dir", ".research/iteration4/images"))
     setup_logging(output_dir)
 
     logging.info("CUDA available: %s", torch.cuda.is_available())
