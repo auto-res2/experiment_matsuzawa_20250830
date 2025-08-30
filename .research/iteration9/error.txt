@@ -1,0 +1,13 @@
+Generating test split:   0%|          | 0/4358 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 4358/4358 [00:00<00:00, 570124.98 examples/s]
+Generating train split:   0%|          | 0/36718 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 36718/36718 [00:00<00:00, 1036759.35 examples/s]
+Generating validation split:   0%|          | 0/3760 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 3760/3760 [00:00<00:00, 817213.34 examples/s]
+Token indices sequence length is longer than the specified maximum sequence length for this model (2428601 > 1024). Running this sequence through the model will result in indexing errors
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:373: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = GradScaler(enabled=(device.type == 'cuda'))
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:387: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=(device.type == 'cuda'), dtype=torch.float16):
+`loss_type=None` was set in the config but it is unrecognized. Using the default loss: `ForCausalLMLoss`.
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:196: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=hidden_states.is_cuda, dtype=torch.float16):
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:236: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=hidden_states.is_cuda, dtype=torch.float16):
