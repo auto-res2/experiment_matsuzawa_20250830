@@ -1,145 +1,92 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Main entry point for Energy-Adaptive SDPA experiments.
-
-Run from project root:
-  python -m src.main
-
-This orchestrates:
-- Preprocessing (token stream generation)
-- Optional training (disabled by default)
-- Evaluation & plotting (saves PDFs to .research/iteration7/images)
-
-Config:
-- A YAML config may be provided at config/config.yaml, or an alternate path via --config.
-- Command-line flags can enable a smoke test with tiny settings.
-"""
-
-from __future__ import annotations
-
 import argparse
-import dataclasses
 import json
-import logging
-import sys
-from pathlib import Path
+import os
+from dataclasses import asdict
 
 import torch
 
-try:
-    import yaml
-except Exception as e:
-    raise RuntimeError("PyYAML is required to read configuration.") from e
-
-from .preprocess import PreprocessConfig, ensure_token_stream
-from .train import TrainConfig, train_model
-from .evaluate import (
-    ExperimentConfig as EvalExperimentConfig,
-    ModelConfig as EvalModelConfig,
-    RunConfig as EvalRunConfig,
-    run_experiments,
-)
-
-
-DEFAULT_CONFIG_PATH = "config/config.yaml"
-
-
-def setup_logging(out_dir: Path) -> None:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    log_file = out_dir / "run.log"
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(log_file, mode="w"),
-        ],
-    )
+from .preprocess import preprocess, PreprocessConfig
+from .train import train_model, TrainConfig
+from .evaluate import evaluate, EvalConfig
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Energy-Adaptive SDPA experiment runner")
-    p.add_argument("--config", type=str, default=DEFAULT_CONFIG_PATH, help="Path to YAML config")
-    p.add_argument("--smoke-test", action="store_true", help="Run a tiny smoke test configuration")
+    p = argparse.ArgumentParser(description="Energy-Adaptive FlashAttention (T4) Experiment Runner")
+    p.add_argument("--config", type=str, default=None, help="Path to a JSON/YAML config file.")
+    p.add_argument("--smoke_test", action="store_true", help="Run a minimal smoke test (few steps/batches).")
     return p.parse_args()
 
 
 def load_config(path: str) -> dict:
+    if path is None:
+        return {}
     with open(path, "r") as f:
-        cfg = yaml.safe_load(f)
-    return cfg
+        txt = f.read()
+    try:
+        import yaml  # type: ignore
+        return yaml.safe_load(txt)
+    except Exception:
+        return json.loads(txt)
 
 
 def main():
     args = parse_args()
-    cfg_dict = load_config(args.config)
+    user_cfg = load_config(args.config) if args.config else {}
 
-    # Directories
-    # Enforce images to be saved under .research/iteration7/images as requested
-    output_dir = Path(cfg_dict.get("output_dir", ".research/iteration7"))
-    images_dir = Path(".research/iteration7/images")
-    setup_logging(output_dir)
+    # Defaults
+    exp_name = user_cfg.get("experiment_name", "eafa_t4")
+    model_name = user_cfg.get("model_name", "gpt2")
+    seq_len = int(user_cfg.get("seq_len", 512))
 
-    logging.info("CUDA available: %s", torch.cuda.is_available())
-
-    # 1) Preprocess
     pp_cfg = PreprocessConfig(
-        tokenizer_name=cfg_dict.get("tokenizer_name", "gpt2"),
-        output_dir=cfg_dict.get("data_dir", "./data"),
-        tokens_filename=cfg_dict.get("tokens_filename", "wikitext103_gpt2_tokens.npy"),
-    )
-    tokens_npy = ensure_token_stream(pp_cfg)
-
-    # 2) Optional training (disabled by default)
-    train_cfg = TrainConfig(
-        model_name=cfg_dict.get("model_name", "gpt2"),
-        device_index=cfg_dict.get("device_index", 0),
-        do_train=bool(cfg_dict.get("do_train", False)),
-        seq_len=int(cfg_dict.get("train_seq_len", 128)),
-        batch_size=int(cfg_dict.get("train_batch_size", 4)),
-        steps=int(cfg_dict.get("train_steps", 20)),
-        lr=float(cfg_dict.get("lr", 5e-5)),
-        warmup_steps=int(cfg_dict.get("warmup_steps", 5)),
-        weight_decay=float(cfg_dict.get("weight_decay", 0.01)),
-        output_dir=cfg_dict.get("models_dir", "./models"),
-        tokens_npy=tokens_npy,
-    )
-    trained_model_dir = train_model(train_cfg)
-
-    # 3) Evaluation
-    if args.smoke_test:
-        seq_lens = [128]
-        seeds = [11]
-        backends = ["mem_efficient", "math", "eafa"]
-        max_batches = 2
-        idle_seconds = 5.0
-        logging.info("Running smoke test: L=%s seeds=%s backends=%s batches=%d", seq_lens, seeds, backends, max_batches)
-    else:
-        seq_lens = cfg_dict.get("seq_lens", [512, 1024])
-        seeds = cfg_dict.get("seeds", [11, 13])
-        backends = cfg_dict.get("backends", ["mem_efficient", "math", "eafa"])  # xformers is optional
-        max_batches = int(cfg_dict.get("max_batches", 20))
-        idle_seconds = float(cfg_dict.get("idle_seconds", 10.0))
-
-    eval_cfg = EvalExperimentConfig(
-        model_cfg=EvalModelConfig(model_name=cfg_dict.get("model_name", "gpt2"), device_index=cfg_dict.get("device_index", 0)),
-        run_cfg=EvalRunConfig(
-            seeds=seeds,
-            seq_lens=seq_lens,
-            backends=backends,
-            max_batches=max_batches,
-            tokens_budget=int(cfg_dict.get("tokens_budget", 16000)),
-            output_dir=str(output_dir),
-            images_dir=str(images_dir),
-        ),
-        tokens_npy=tokens_npy,
-        idle_seconds=idle_seconds,
+        experiment_name=exp_name,
+        model_name=model_name,
+        seq_len=seq_len,
+        data_dir=user_cfg.get("data_dir", "data"),
     )
 
-    artifacts = run_experiments(eval_cfg)
-    logging.info("Artifacts: %s", json.dumps(artifacts, indent=2))
+    # Preprocess
+    train_path, val_path = preprocess(pp_cfg)
+    print(f"[main] Preprocessed data -> train: {train_path} | val: {val_path}")
+
+    # Train
+    tr_cfg = TrainConfig(
+        experiment_name=exp_name,
+        model_name=model_name,
+        seq_len=seq_len,
+        train_steps=int(user_cfg.get("train_steps", 50 if not args.smoke_test else 5)),
+        warmup_steps=int(user_cfg.get("warmup_steps", 5 if not args.smoke_test else 1)),
+        lr=float(user_cfg.get("lr", 5e-5)),
+        weight_decay=float(user_cfg.get("weight_decay", 0.0)),
+        train_batch_size=int(user_cfg.get("train_batch_size", 2 if not args.smoke_test else 1)),
+        grad_accum_steps=int(user_cfg.get("grad_accum_steps", 1)),
+        save_dir=user_cfg.get("model_dir", "models"),
+        data_dir=user_cfg.get("data_dir", "data"),
+        device=user_cfg.get("device", "cuda" if torch.cuda.is_available() else "cpu"),
+        seed=int(user_cfg.get("seed", 42)),
+    )
+    model_path = train_model(tr_cfg, train_data_path=train_path)
+
+    # Evaluate
+    ev_cfg = EvalConfig(
+        experiment_name=exp_name,
+        model_name=model_name,
+        seq_len=seq_len,
+        eval_batch_size=int(user_cfg.get("eval_batch_size", 4 if not args.smoke_test else 2)),
+        warmup_batches=int(user_cfg.get("eval_warmup_batches", 3 if not args.smoke_test else 1)),
+        measure_batches=int(user_cfg.get("eval_measure_batches", 10 if not args.smoke_test else 2)),
+        data_dir=user_cfg.get("data_dir", "data"),
+        model_dir=user_cfg.get("model_dir", "models"),
+        device=user_cfg.get("device", "cuda" if torch.cuda.is_available() else "cpu"),
+        gpu_index=int(user_cfg.get("gpu_index", 0)),
+        enable_mpts=bool(user_cfg.get("enable_mpts", True)),
+        enable_skp=bool(user_cfg.get("enable_skp", True)),
+    )
+    results = evaluate(ev_cfg, val_data_path=val_path, model_path=model_path)
+
+    print("[main] Evaluation summary:")
+    for k, v in results.items():
+        print(f"  - {k}: PPL={v['ppl']:.3f}, tokens/s={v['mean_tokens_per_s']:.1f}, energy/batch={v['mean_energy_j']:.3f} J")
 
 
 if __name__ == "__main__":

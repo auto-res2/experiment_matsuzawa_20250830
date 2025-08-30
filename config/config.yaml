@@ -1,34 +1,27 @@
-# Default experiment configuration for EA-FA T4 experiments
-
-# IO directories
-output_dir: .research/iteration7
-images_dir: .research/iteration7/images
-models_dir: ./models
-data_dir: ./data
-
-# Preprocessing
-tokenizer_name: gpt2
-tokens_filename: wikitext103_gpt2_tokens.npy
-
-# Model
+# Energy-Adaptive FlashAttention (T4) experiment config
+experiment_name: eafa_t4
 model_name: gpt2
-device_index: 0
+seq_len: 512
 
-# Optional tiny finetuning (disabled by default to save compute)
-do_train: false
-train_seq_len: 128
-train_batch_size: 4
-train_steps: 20
-lr: 5e-5
+# Training
+train_steps: 50
 warmup_steps: 5
-weight_decay: 0.01
+lr: 5e-5
+weight_decay: 0.0
+train_batch_size: 2
+grad_accum_steps: 1
 
-# Evaluation sweep
-seq_lens: [512, 1024]
-seeds: [11, 13]
-backends: [mem_efficient, math, eafa]  # xformers is optional and used if installed
-max_batches: 20
-idle_seconds: 10.0
+# Evaluation
+eval_batch_size: 4
+eval_warmup_batches: 3
+eval_measure_batches: 10
 
-# Target tokens budget per batch-size search (B*L ~= tokens_budget)
-tokens_budget: 16000
+data_dir: data
+model_dir: models
+device: cuda
+seed: 42
+gpu_index: 0
+
+# Energy-Aware knobs
+enable_mpts: true
+enable_skp: true
