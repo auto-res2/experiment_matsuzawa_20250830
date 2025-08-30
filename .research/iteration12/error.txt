@@ -1,0 +1,4 @@
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:255: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler(enabled=(device.type == 'cuda'))
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:267: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=(device.type == 'cuda')):
