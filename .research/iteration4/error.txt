@@ -1,0 +1,16 @@
+Generating test split:   0%|          | 0/4358 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 4358/4358 [00:00<00:00, 594277.16 examples/s]
+Generating train split:   0%|          | 0/1801350 [00:00<?, ? examples/s]Generating train split:   6%|▌         | 107000/1801350 [00:00<00:01, 1058458.24 examples/s]Generating train split:  12%|█▏        | 220000/1801350 [00:00<00:01, 1094892.15 examples/s]Generating train split:  19%|█▉        | 345000/1801350 [00:00<00:01, 1162610.62 examples/s]Generating train split:  29%|██▉       | 518000/1801350 [00:00<00:01, 1154663.15 examples/s]Generating train split:  35%|███▌      | 635000/1801350 [00:00<00:01, 1157173.20 examples/s]Generating train split:  42%|████▏     | 758000/1801350 [00:00<00:00, 1177611.11 examples/s]Generating train split:  51%|█████     | 917675/1801350 [00:00<00:00, 1129161.10 examples/s]Generating train split:  58%|█████▊    | 1042675/1801350 [00:00<00:00, 1159525.11 examples/s]Generating train split:  68%|██████▊   | 1220675/1801350 [00:01<00:00, 1166474.56 examples/s]Generating train split:  78%|███████▊  | 1399675/1801350 [00:01<00:00, 1170535.07 examples/s]Generating train split:  88%|████████▊ | 1578675/1801350 [00:01<00:00, 1173907.27 examples/s]Generating train split:  98%|█████████▊| 1758675/1801350 [00:01<00:00, 1180509.30 examples/s]Generating train split: 100%|██████████| 1801350/1801350 [00:01<00:00, 1163936.10 examples/s]
+Generating validation split:   0%|          | 0/3760 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 3760/3760 [00:00<00:00, 803187.32 examples/s]
+Token indices sequence length is longer than the specified maximum sequence length for this model (286657 > 1024). Running this sequence through the model will result in indexing errors
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 145, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 92, in main
+    tokens_npy = ensure_token_stream(pp_cfg)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/preprocess.py", line 68, in ensure_token_stream
+    flat = np.concatenate([np.array(x, dtype=np.int64) for x in ragged]).astype(np.int64)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: zero-dimensional arrays cannot be concatenated
