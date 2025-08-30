@@ -113,7 +113,9 @@ class ToyScheduler:
     def add_noise(self, x0: torch.Tensor, t: torch.Tensor, noise: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         if noise is None:
             noise = torch.randn_like(x0)
-        at = self.alpha_bars[t].reshape(-1, 1, 1, 1).to(x0.device)
+        # Ensure the indexing tensor and the indexed tensor are on the same device
+        t_idx = t.long().to(x0.device)
+        at = self.alpha_bars.to(x0.device)[t_idx].reshape(-1, 1, 1, 1)
         xt = torch.sqrt(at) * x0 + torch.sqrt(1 - at) * noise
         return xt, noise
 
