@@ -1,0 +1,14 @@
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py:170: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler(enabled=(tcfg.amp_dtype in (torch.float16, torch.bfloat16))) if hasattr(torch.cuda, 'amp') else None
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:472: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=True, dtype=dtype):
+/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
+  self.gen = func(*args, **kwds)
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py:200: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=True, dtype=tcfg.amp_dtype):
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py:51: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=True, dtype=amp_dtype):
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:282: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=True, dtype=dtype_policy_fp16):
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:306: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
