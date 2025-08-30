@@ -1,0 +1,46 @@
+/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py:32: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  assert C == self.channels
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 110, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 100, in main
+    _ = onnx_export_light(light, teacher, device=cfg.device, save_path=onnx_path)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/evaluate.py", line 158, in onnx_export_light
+    torch.onnx.export(wrapper.cpu(), cpu_inputs, save_path,
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/__init__.py", line 424, in export
+    export(
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/utils.py", line 522, in export
+    _export(
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/utils.py", line 1457, in _export
+    graph, params_dict, torch_out = _model_to_graph(
+                                    ^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/utils.py", line 1084, in _model_to_graph
+    graph = _optimize_graph(
+            ^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/utils.py", line 659, in _optimize_graph
+    graph = _C._jit_pass_onnx(graph, operator_export_type)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/utils.py", line 1726, in _run_symbolic_function
+    return symbolic_fn(graph_context, *inputs, **attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/symbolic_helper.py", line 372, in wrapper
+    return fn(g, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/symbolic_opset9.py", line 1700, in symbolic_fn
+    return symbolic_helper._unimplemented(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/symbolic_helper.py", line 563, in _unimplemented
+    _onnx_unsupported(f"{op}, {msg}", value)
+  File "/home/runner/work/_tool/Python/3.11.13/x64/lib/python3.11/site-packages/torch/onnx/symbolic_helper.py", line 573, in _onnx_unsupported
+    raise errors.SymbolicValueError(
+torch.onnx.errors.SymbolicValueError: Unsupported: ONNX export of operator adaptive_avg_pool2d, output size that are not factor of input size. Please feel free to request support or submit a pull request on PyTorch GitHub: https://github.com/pytorch/pytorch/issues  [Caused by the value '105 defined in (%105 : Long(2, strides=[1], device=cpu) = onnx::Constant[value= 32  32 [ CPULongType{2} ]]()
+)' (type 'Tensor') in the TorchScript graph. The containing node has kind 'onnx::Constant'.] 
+
+    Inputs:
+        Empty
+    Outputs:
+        #0: 105 defined in (%105 : Long(2, strides=[1], device=cpu) = onnx::Constant[value= 32  32 [ CPULongType{2} ]]()
+    )  (type 'Tensor')
