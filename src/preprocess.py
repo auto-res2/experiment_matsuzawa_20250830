@@ -62,10 +62,11 @@ def ensure_token_stream(cfg: PreprocessConfig) -> str:
 
     ds = hfdatasets.load_dataset("wikitext", "wikitext-103-v1", split="test")
     text = "\n\n".join(ds["text"])  # concatenate for a long stream
-    enc = tok(text, return_tensors=None, add_special_tokens=False)
-    # enc["input_ids"] is a list of lists (ragged); flatten
-    ragged = enc["input_ids"]
-    flat = np.concatenate([np.array(x, dtype=np.int64) for x in ragged]).astype(np.int64)
+
+    # Tokenize the single long string; returns a flat list[int]
+    ids = tok.encode(text, add_special_tokens=False)
+    flat = np.asarray(ids, dtype=np.int64)
+
     np.save(out_path, flat)
     logging.info("Saved token stream: %s (tokens=%d)", out_path, len(flat))
     return str(out_path)

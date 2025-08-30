@@ -1,8 +1,8 @@
 # Default experiment configuration for EA-FA T4 experiments
 
 # IO directories
-output_dir: .research/iteration4
-images_dir: .research/iteration4/images
+output_dir: .research/iteration5
+images_dir: .research/iteration5/images
 models_dir: ./models
 data_dir: ./data
 

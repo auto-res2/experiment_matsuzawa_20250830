@@ -277,7 +277,17 @@ class SDPAWrapper(nn.Module):
         self.backend = backend
         self.eafa_ctrl = eafa_ctrl
 
-    def forward(self, hidden_states: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        layer_past: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.Tensor] = None,
+        use_cache: bool = False,
+        output_attentions: bool = False,
+    ) -> Tuple[torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]], Optional[torch.Tensor]]:
         bsz, seq, hidden = hidden_states.size()
         qkv = self.c_attn(hidden_states)
         q, k, v = qkv.split(hidden, dim=2)
@@ -325,7 +335,13 @@ class SDPAWrapper(nn.Module):
 
         out = out.transpose(1, 2).contiguous().view(bsz, seq, hidden)
         out = self.c_proj(out)
-        return out
+
+        present = None  # we do not implement KV cache here
+        if output_attentions:
+            attn_weights = None
+            return out, present, attn_weights
+        else:
+            return out, present
 
 
 def _get_parent(root: nn.Module, path: str) -> nn.Module:
