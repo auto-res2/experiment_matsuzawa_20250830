@@ -3,7 +3,7 @@
 Preprocessing utilities: Time-Warp key-step discovery and ΔF computation.
 - Provides generic ΔF heatmap computation and greedy key-step selection.
 - Includes a toy pipeline to generate features for quick tests.
-- Saves all figures as PDF under .research/iteration10/images.
+- Saves all figures as PDF under .research/iteration11/images.
 """
 
 import os
@@ -108,7 +108,7 @@ def save_heatmap_pdf(deltaF: np.ndarray, key_steps: List[int], out_pdf: str, tit
     plt.close()
 
 
-def timewarp_discover_toy(n_steps: int = 10, K: int = 3, image_shape: Tuple[int, int] = (64, 64), images_out_dir: str = ".research/iteration10/images") -> List[int]:
+def timewarp_discover_toy(n_steps: int = 10, K: int = 3, image_shape: Tuple[int, int] = (64, 64), images_out_dir: str = ".research/iteration11/images") -> List[int]:
     """Runs a toy ΔF computation and returns selected key steps. Saves a PDF heatmap."""
     ensure_dir(images_out_dir)
     set_seed(123)

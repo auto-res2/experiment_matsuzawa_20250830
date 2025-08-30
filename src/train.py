@@ -3,7 +3,7 @@
 Training utilities for LoRA-Prop (+ Time-Warp) with a lightweight, toy setup.
 - Implements a tiny backbone that emits per-layer features across a synthetic time-grid.
 - Trains rank-r LoRA adapters to extrapolate features from the nearest previous key-step.
-- Saves trained adapters to the models directory and a training loss curve PDF to .research/iteration10/images.
+- Saves trained adapters to the models directory and a training loss curve PDF to .research/iteration11/images.
 
 Notes
 - This file avoids heavy dependencies and can run on CPU/GPU. It is designed to be fast for a quick test.
@@ -208,18 +208,18 @@ class TrainConfig:
     total_steps: int = 10
     key_steps: Tuple[int, ...] = (2, 5, 8)
     device: str = "cpu"
-    images_out_dir: str = ".research/iteration10/images"
+    images_out_dir: str = ".research/iteration11/images"
     models_out_dir: str = "models"
     model_name: str = "loraprop_toy.pt"
 
 
 def collate_fn(batch):
-    # Group by layer_id for more efficient adapter calls
+    # Group by layer_id for more efficient adapter calls. Do not concatenate tensors of differing shapes.
     layer_ids = [b[0] for b in batch]
-    f_prev = torch.cat([b[1] for b in batch], dim=0)
-    f_t = torch.cat([b[2] for b in batch], dim=0)
+    f_prev_list = [b[1] for b in batch]
+    f_t_list = [b[2] for b in batch]
     delta_t = torch.cat([b[3] for b in batch], dim=0).view(-1)
-    return layer_ids, f_prev, f_t, delta_t
+    return layer_ids, f_prev_list, f_t_list, delta_t
 
 
 def train_lora_adapters_toy(cfg: TrainConfig) -> str:
@@ -241,10 +241,7 @@ def train_lora_adapters_toy(cfg: TrainConfig) -> str:
     )
     loader = DataLoader(dset, batch_size=cfg.batch_size, shuffle=True, collate_fn=collate_fn)
 
-    # Determine channels by peeking at one sample
-    _, f_prev, _, _ = next(iter(loader))
-    C = f_prev.shape[1]
-    # But we have two layers with different channels: replicate logic
+    # Define layer channels explicitly for the toy backbone
     layer_channels = {"down_0": 32, "down_1": 64}
     adapters = AdapterBank(layer_channels, rank=cfg.rank).to(device)
 
@@ -258,29 +255,25 @@ def train_lora_adapters_toy(cfg: TrainConfig) -> str:
         adapters.train()
         running = 0.0
         n_batches = 0
-        for layer_ids, f_prev, f_t, delta_t in loader:
-            f_prev = f_prev.to(device)
-            f_t = f_t.to(device)
+        for layer_ids, f_prev_list, f_t_list, delta_t in loader:
             delta_t = delta_t.to(device)
 
             with torch.cuda.amp.autocast(enabled=(device.type == 'cuda')):
-                preds = []
-                offset = 0
-                # We have mixed layer_ids in the batch; process in a loop
-                for i in range(len(layer_ids)):
-                    lid = layer_ids[i]
-                    pred_i = adapters(lid, f_prev[i:i+1], delta_t[i:i+1])
-                    preds.append(pred_i)
-                    offset += 1
-                pred = torch.cat(preds, dim=0)
-                loss = F.mse_loss(pred, f_t)
+                batch_losses = []
+                for i, lid in enumerate(layer_ids):
+                    f_prev_i = f_prev_list[i].to(device)
+                    f_t_i = f_t_list[i].to(device)
+                    # Each sample has B=1, align delta_t accordingly
+                    pred_i = adapters(lid, f_prev_i, delta_t[i:i+1])
+                    batch_losses.append(F.mse_loss(pred_i, f_t_i))
+                loss = torch.stack(batch_losses).mean() if batch_losses else torch.tensor(0.0, device=device)
 
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()
 
-            running += loss.item()
+            running += float(loss.item())
             n_batches += 1
         epoch_loss = running / max(1, n_batches)
         losses.append(epoch_loss)

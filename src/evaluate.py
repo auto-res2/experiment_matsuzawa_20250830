@@ -2,7 +2,7 @@
 """
 Evaluation utilities for LoRA-Prop (+ Time-Warp) in a lightweight toy setup.
 - Compares cache-only vs our LoRA-Prop adapters vs full backbone.
-- Produces high-quality PDF plots saved under .research/iteration10/images.
+- Produces high-quality PDF plots saved under .research/iteration11/images.
 - Includes throughput measurements on the toy backbone.
 """
 
@@ -31,7 +31,7 @@ class EvalConfig:
     seeds: Tuple[int, ...] = (0, 1)
     image_shape: Tuple[int, int] = (64, 64)
     device: str = "cpu"
-    images_out_dir: str = ".research/iteration10/images"
+    images_out_dir: str = ".research/iteration11/images"
     models_ckpt_path: str = "models/loraprop_toy.pt"
     rank: int = 8
 
@@ -189,7 +189,7 @@ def evaluate_toy(cfg: EvalConfig) -> Dict[str, float]:
     }
 
 
-def quick_test_eval(images_out_dir: str = ".research/iteration10/images"):
+def quick_test_eval(images_out_dir: str = ".research/iteration11/images"):
     """Minimal self-check to ensure evaluation code runs and saves PDFs."""
     ensure_dir(images_out_dir)
     cfg = EvalConfig(images_out_dir=images_out_dir)
