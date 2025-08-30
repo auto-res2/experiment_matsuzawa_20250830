@@ -1,114 +1,93 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Data preprocessing utilities and reproducibility helpers.
-- Synthetic dataset fallback to avoid large downloads in quick tests.
+Preprocessing utilities for EA-FA experiments.
+
+- Downloads WikiText-103 (test split) via Hugging Face datasets.
+- Tokenizes with GPT-2 tokenizer and saves a flat token stream as a NumPy array.
+- Provides a dataset to yield contiguous token chunks of length seq_len.
+
+Run context:
+- Orchestrated from src.main (python -m src.main)
+- All imports within src are relative where applicable.
 """
+
 from __future__ import annotations
-import os
-import random
+
+import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from pathlib import Path
+from typing import Dict
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
+
+try:
+    from transformers import AutoTokenizer
+    _HAVE_HF = True
+except Exception:
+    _HAVE_HF = False
+
+try:
+    import datasets as hfdatasets
+    _HAVE_DATASETS = True
+except Exception:
+    _HAVE_DATASETS = False
 
 
-def set_seed(seed: int) -> None:
-    # Ensure cuBLAS reproducibility is configured for deterministic algorithms
-    # Must be set before CUDA ops that use cuBLAS.
-    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":16:8")
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.use_deterministic_algorithms(True)
-    torch.set_num_threads(max(1, min(8, os.cpu_count() or 1)))
+@dataclass
+class PreprocessConfig:
+    tokenizer_name: str = "gpt2"
+    output_dir: str = "./data"
+    tokens_filename: str = "wikitext103_gpt2_tokens.npy"
 
 
-class PackedTextDataset(Dataset):
-    def __init__(self, texts: List[str], tokenizer, seq_len: int, pad_token_id: int, stride: int | None = None) -> None:
+def ensure_token_stream(cfg: PreprocessConfig) -> str:
+    """Create the flat token stream file if it does not exist. Returns path to .npy file."""
+    out_dir = Path(cfg.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / cfg.tokens_filename
+    if out_path.exists():
+        logging.info("Using existing token stream at %s", out_path)
+        return str(out_path)
+
+    if not _HAVE_HF or not _HAVE_DATASETS:
+        raise RuntimeError("transformers and datasets are required for preprocessing.")
+
+    logging.info("Loading WikiText-103 test split and tokenizing with %s...", cfg.tokenizer_name)
+    tok = AutoTokenizer.from_pretrained(cfg.tokenizer_name)
+    if not tok.pad_token:
+        tok.pad_token = tok.eos_token
+
+    ds = hfdatasets.load_dataset("wikitext", "wikitext-103-v1", split="test")
+    text = "\n\n".join(ds["text"])  # concatenate for a long stream
+    enc = tok(text, return_tensors=None, add_special_tokens=False)
+    # enc["input_ids"] is a list of lists (ragged); flatten
+    ragged = enc["input_ids"]
+    flat = np.concatenate([np.array(x, dtype=np.int64) for x in ragged]).astype(np.int64)
+    np.save(out_path, flat)
+    logging.info("Saved token stream: %s (tokens=%d)", out_path, len(flat))
+    return str(out_path)
+
+
+class TokenSequenceDataset(Dataset):
+    """Dataset yielding contiguous sequences of length seq_len from a 1D token array."""
+    def __init__(self, token_ids: np.ndarray, seq_len: int):
+        assert token_ids.ndim == 1
         self.seq_len = int(seq_len)
-        self.pad_token_id = int(pad_token_id)
-        self.stride = int(stride) if stride is not None else int(seq_len)
-        all_ids: List[int] = []
-        for t in texts:
-            ids = tokenizer.encode(t)
-            if len(ids) == 0:
-                continue
-            all_ids.extend(ids + [tokenizer.eos_token_id])
-        self.chunks: List[np.ndarray] = []
-        i = 0
-        while i < len(all_ids):
-            window = all_ids[i: i + self.seq_len]
-            if len(window) < self.seq_len:
-                window = window + [self.pad_token_id] * (self.seq_len - len(window))
-            self.chunks.append(np.asarray(window, dtype=np.int64))
-            i += self.stride
-        if len(self.chunks) == 0:
-            self.chunks = [np.zeros(self.seq_len, dtype=np.int64)]
-    def __len__(self) -> int:
-        return len(self.chunks)
+        n_full = (len(token_ids) // self.seq_len) * self.seq_len
+        self.tokens = token_ids[:n_full].astype(np.int64)
+        self.num_samples = len(self.tokens) // self.seq_len
+
+    def __len__(self):
+        return self.num_samples
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        arr = self.chunks[idx]
-        x = torch.from_numpy(arr)
-        y = torch.roll(x, shifts=-1, dims=0)
-        return {"input_ids": x, "labels": y}
+        start = idx * self.seq_len
+        end = start + self.seq_len
+        x = torch.tensor(self.tokens[start:end], dtype=torch.long)
+        return {"input_ids": x}
 
 
-def build_dataloaders(
-    dataset_name: str,
-    split: str,
-    tokenizer_name: str,
-    seq_len: int,
-    batch_size: int,
-    num_workers: int = 2,
-) -> Tuple[DataLoader, Any]:
-    # Synthetic short path
-    if dataset_name.lower() == "synthetic":
-        class DummyTok:
-            eos_token_id = 50256
-            pad_token_id = 50256
-            def encode(self, s: str) -> List[int]:  # type: ignore
-                rng = np.random.RandomState(abs(hash(s)) % (2**32))
-                ln = rng.randint(10, 200)
-                return rng.randint(0, 30000, size=ln).tolist()
-        tok = DummyTok()
-        texts = [f"synthetic sample {i}" for i in range(10000)]
-        dataset = PackedTextDataset(texts, tok, seq_len=seq_len, pad_token_id=tok.pad_token_id)
-        collate = lambda batch: {"input_ids": torch.stack([b["input_ids"] for b in batch], 0),
-                                 "labels": torch.stack([b["labels"] for b in batch], 0)}
-        dl = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=False, collate_fn=collate)
-        return dl, tok
-    # HuggingFace path (optional)
-    try:
-        from datasets import load_dataset  # type: ignore
-        from transformers import AutoTokenizer  # type: ignore
-        tok = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
-        if tok.pad_token_id is None:
-            tok.pad_token = tok.eos_token
-        ds = load_dataset(dataset_name, split=split)
-        texts = [r["text"] for r in ds.select(range(min(5000, len(ds)))) if isinstance(r.get("text"), str)]
-        dataset = PackedTextDataset(texts, tok, seq_len=seq_len, pad_token_id=tok.pad_token_id)
-        collate = lambda batch: {"input_ids": torch.stack([b["input_ids"] for b in batch], 0),
-                                 "labels": torch.stack([b["labels"] for b in batch], 0)}
-        dl = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=(num_workers>0), collate_fn=collate)
-        return dl, tok
-    except Exception as e:
-        warnings = f"Falling back to synthetic dataset: {e}"
-        print(warnings)
-        class DummyTok:
-            eos_token_id = 50256
-            pad_token_id = 50256
-            def encode(self, s: str) -> List[int]:  # type: ignore
-                rng = np.random.RandomState(abs(hash(s)) % (2**32))
-                ln = rng.randint(10, 200)
-                return rng.randint(0, 30000, size=ln).tolist()
-        tok = DummyTok()
-        texts = [f"synthetic sample {i}" for i in range(10000)]
-        dataset = PackedTextDataset(texts, tok, seq_len=seq_len, pad_token_id=tok.pad_token_id)
-        collate = lambda batch: {"input_ids": torch.stack([b["input_ids"] for b in batch], 0),
-                                 "labels": torch.stack([b["labels"] for b in batch], 0)}
-        dl = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=False, collate_fn=collate)
-        return dl, tok
+__all__ = ["PreprocessConfig", "ensure_token_stream", "TokenSequenceDataset"]

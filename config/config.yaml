@@ -1,48 +1,34 @@
-# Default experiment configuration for EA-FA on Tesla T4
-exp_id: iteration1
-seeds: [42]
-modes: [inference]  # options: [inference, training]
+# Default experiment configuration for EA-FA T4 experiments
 
-# Data
-# Use synthetic to avoid large downloads and keep runtimes small for a smoke test
-dataset_name: synthetic
-# If using HF datasets, provide split and tokenizer
-dataset_split: wikitext-103-v1
+# IO directories
+output_dir: .research/iteration3
+images_dir: .research/iteration3/images
+models_dir: ./models
+data_dir: ./data
+
+# Preprocessing
 tokenizer_name: gpt2
-
-# Sequence lengths to test
-seq_lens: [256, 512]
-
-# Budgeting
-global_tokens_per_iter: 16384
-measure_warmup_iters: 10
-measure_iters: 10
-max_train_steps: 20
+tokens_filename: wikitext103_gpt2_tokens.npy
 
 # Model
-vocab_size: 50257
-d_model: 384
-n_layers: 6
-n_heads: 6
-mlp_ratio: 4.0
-dropout: 0.0
-amp_dtype_name: float16
-
-# Optimizer
-lr: 0.0003
-betas: [0.9, 0.95]
-eps: 1.0e-08
-weight_decay: 0.1
-
-# Device
+model_name: gpt2
 device_index: 0
 
-# EA-FA toggles
-backends: [pytorch_mem_efficient, pytorch_math, xformers]
-power_limits: [50, 60, 70]
-enable_rpa: true
-enable_mpts: true
-enable_skp: true
-entropy_tau: 1.5
-skp_tile: 64
-skp_eps: 1.0e-4
+# Optional tiny finetuning (disabled by default to save compute)
+do_train: false
+train_seq_len: 128
+train_batch_size: 4
+train_steps: 20
+lr: 5e-5
+warmup_steps: 5
+weight_decay: 0.01
+
+# Evaluation sweep
+seq_lens: [512, 1024]
+seeds: [11, 13]
+backends: [mem_efficient, math, eafa]  # xformers is optional and used if installed
+max_batches: 20
+idle_seconds: 10.0
+
+# Target tokens budget per batch-size search (B*L ~= tokens_budget)
+tokens_budget: 16000
