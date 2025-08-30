@@ -9,7 +9,7 @@ Implements:
 - SDPA patch for GPT-2 attention, with xFormers optional.
 - Dataset pipeline reading from a pre-tokenized token stream saved by preprocess.
 - Robust logging, OOM-safe batch size search, VRAM monitoring.
-- High-quality PDF plots saved to .research/iteration6/images.
+- High-quality PDF plots saved to .research/iteration7/images.
 
 Run context:
 - Orchestrated from src.main (python -m src.main)
@@ -567,10 +567,14 @@ def save_plots(df: pd.DataFrame, images_dir: Path, label: str) -> None:
     for metric, title in plots:
         fig, ax = plt.subplots(figsize=(6.0, 3.6))
         sub = df.groupby(["backend", "seq_len"])  # mean and CI across seeds/batches
-        means = sub[metric].mean()
-        cis = sub[metric].apply(lambda x: pd.Series(bootstrap_ci(x.to_numpy())))
-        cis.columns = ["ci_lo", "ci_hi"]
-        res = pd.concat([means, cis], axis=1).reset_index()
+        # Use a single aggregation to avoid mismatched indices
+        res = sub[metric].agg(
+            mean="mean",
+            ci_lo=lambda x: bootstrap_ci(x.to_numpy())[0],
+            ci_hi=lambda x: bootstrap_ci(x.to_numpy())[1],
+        ).reset_index()
+        # For downstream code compatibility, name the mean column as the metric
+        res = res.rename(columns={"mean": metric})
         backends = sorted(res["backend"].unique())
         seqs = sorted(res["seq_len"].unique())
         colors = plt.cm.Set2.colors
@@ -582,9 +586,9 @@ def save_plots(df: pd.DataFrame, images_dir: Path, label: str) -> None:
                 if len(row) == 0:
                     vals.append(np.nan); los.append(0.0); his.append(0.0)
                 else:
-                    m = float(row[metric])
-                    ci_lo = float(row["ci_lo"])
-                    ci_hi = float(row["ci_hi"])
+                    m = float(row.iloc[0][metric])
+                    ci_lo = float(row.iloc[0]["ci_lo"])
+                    ci_hi = float(row.iloc[0]["ci_hi"])
                     vals.append(m)
                     los.append(m - ci_lo)
                     his.append(ci_hi - m)
