@@ -48,7 +48,7 @@ def load_config(path: str) -> Config:
         train_batch=int(d.get('train_batch', 8)),
         rank=int(d.get('rank', 8)),
         results_dir=d.get('results_dir', 'results'),
-        images_dir=d.get('images_dir', '.research/iteration6/images'),
+        images_dir=d.get('images_dir', '.research/iteration7/images'),
         model_save_path=d.get('model_save_path', 'models/loraprop_lightpath.pt'),
     )
 

@@ -30,8 +30,17 @@ class FiLM(nn.Module):
         self.to_scale = nn.Linear(time_dim, channels)
         self.to_shift = nn.Linear(time_dim, channels)
     def forward(self, x: torch.Tensor, t_emb: torch.Tensor) -> torch.Tensor:
-        s = self.to_scale(t_emb).view(x.size(0), -1, 1, 1)
-        b = self.to_shift(t_emb).view(x.size(0), -1, 1, 1)
+        # Ensure t_emb has batch dimension matching x; if a single time is provided, broadcast it
+        if t_emb.dim() == 1:
+            t_emb = t_emb.unsqueeze(0)
+        B = x.size(0)
+        if t_emb.size(0) != B:
+            if t_emb.size(0) == 1:
+                t_emb = t_emb.expand(B, -1)
+            else:
+                raise ValueError(f"t_emb batch {t_emb.size(0)} does not match x batch {B}")
+        s = self.to_scale(t_emb).unsqueeze(-1).unsqueeze(-1)
+        b = self.to_shift(t_emb).unsqueeze(-1).unsqueeze(-1)
         return x * (1 + s) + b
 
 
