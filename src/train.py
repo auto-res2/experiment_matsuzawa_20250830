@@ -50,7 +50,8 @@ class LightEpsHead(nn.Module):
         )
 
     def forward(self, feats: List[torch.Tensor]) -> torch.Tensor:
-        pooled = [F.adaptive_avg_pool2d(f, (32, 32)) for f in feats]
+        # Use interpolation to a common size to ensure ONNX export compatibility
+        pooled = [F.interpolate(f, size=(32, 32), mode='bilinear', align_corners=False) for f in feats]
         x = torch.cat(pooled, dim=1)
         return self.proj(x)
 

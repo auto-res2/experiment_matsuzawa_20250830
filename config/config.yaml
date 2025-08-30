@@ -16,5 +16,5 @@ rank: 8
 
 # Paths
 results_dir: results
-images_dir: .research/iteration7/images
+images_dir: .research/iteration8/images
 model_save_path: models/loraprop_lightpath.pt
