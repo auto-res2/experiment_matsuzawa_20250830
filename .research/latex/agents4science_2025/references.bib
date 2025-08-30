@@ -5,3 +5,446 @@
   publisher = {GitHub},
   url       = {https://github.com/airas-org/airas}
 }
+
+% ===========================================
+% REQUIRED CITATIONS
+% These papers must be cited in the manuscript
+% ===========================================
+
+@article{author-year-adder,
+ title = {Adder Attention for Vision Transformer}
+}
+
+@article{author-year-kernel,
+ title = {Kernel Multimodal Continuous Attention}
+}
+
+@article{bhojanapalli-2020-low,
+ abstract = {Attention based Transformer architecture has enabled significant advances in
+the field of natural language processing. In addition to new pre-training
+techniques, recent improvements crucially rely on working with a relatively
+larger embedding dimension for tokens. Unfortunately, this leads to models that
+are prohibitively large to be employed in the downstream tasks. In this paper
+we identify one of the important factors contributing to the large embedding
+size requirement. In particular, our analysis highlights that the scaling
+between the number of heads and the size of each head in the current
+architecture gives rise to a low-rank bottleneck in attention heads, causing
+this limitation. We further validate this in our experiments. As a solution we
+propose to set the head size of an attention unit to input sequence length, and
+independent of the number of heads, resulting in multi-head attention layers
+with provably more expressive power. We empirically show that this allows us to
+train models with a relatively smaller embedding dimension and with better
+performance scaling.},
+ arxiv_url = {https://arxiv.org/pdf/2002.07028v1.pdf},
+ author = {Srinadh Bhojanapalli and Chulhee Yun and Ankit Singh Rawat and Sashank J. Reddi and Sanjiv Kumar},
+ github_url = {https://github.com/google-research/bert},
+ title = {Low-Rank Bottleneck in Multi-head Attention Models},
+ year = {2020}
+}
+
+@article{dao-2022-flashattention,
+ abstract = {Transformers are slow and memory-hungry on long sequences, since the time and
+memory complexity of self-attention are quadratic in sequence length.
+Approximate attention methods have attempted to address this problem by trading
+off model quality to reduce the compute complexity, but often do not achieve
+wall-clock speedup. We argue that a missing principle is making attention
+algorithms IO-aware -- accounting for reads and writes between levels of GPU
+memory. We propose FlashAttention, an IO-aware exact attention algorithm that
+uses tiling to reduce the number of memory reads/writes between GPU high
+bandwidth memory (HBM) and GPU on-chip SRAM. We analyze the IO complexity of
+FlashAttention, showing that it requires fewer HBM accesses than standard
+attention, and is optimal for a range of SRAM sizes. We also extend
+FlashAttention to block-sparse attention, yielding an approximate attention
+algorithm that is faster than any existing approximate attention method.
+FlashAttention trains Transformers faster than existing baselines: 15%
+end-to-end wall-clock speedup on BERT-large (seq. length 512) compared to the
+MLPerf 1.1 training speed record, 3$\times$ speedup on GPT-2 (seq. length 1K),
+and 2.4$\times$ speedup on long-range arena (seq. length 1K-4K). FlashAttention
+and block-sparse FlashAttention enable longer context in Transformers, yielding
+higher quality models (0.7 better perplexity on GPT-2 and 6.4 points of lift on
+long-document classification) and entirely new capabilities: the first
+Transformers to achieve better-than-chance performance on the Path-X challenge
+(seq. length 16K, 61.4% accuracy) and Path-256 (seq. length 64K, 63.1%
+accuracy).},
+ arxiv_url = {https://arxiv.org/pdf/2205.14135v2.pdf},
+ author = {Tri Dao and Daniel Y. Fu and Stefano Ermon and Atri Rudra and Christopher Ré},
+ github_url = {https://github.com/HazyResearch/flash-attention},
+ title = {FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness},
+ year = {2022}
+}
+
+@article{dao-2023-flashattention,
+ abstract = {Scaling Transformers to longer sequence lengths has been a major problem in
+the last several years, promising to improve performance in language modeling
+and high-resolution image understanding, as well as to unlock new applications
+in code, audio, and video generation. The attention layer is the main
+bottleneck in scaling to longer sequences, as its runtime and memory increase
+quadratically in the sequence length. FlashAttention exploits the asymmetric
+GPU memory hierarchy to bring significant memory saving (linear instead of
+quadratic) and runtime speedup (2-4$\times$ compared to optimized baselines),
+with no approximation. However, FlashAttention is still not nearly as fast as
+optimized matrix-multiply (GEMM) operations, reaching only 25-40\% of the
+theoretical maximum FLOPs/s. We observe that the inefficiency is due to
+suboptimal work partitioning between different thread blocks and warps on the
+GPU, causing either low-occupancy or unnecessary shared memory reads/writes. We
+propose FlashAttention-2, with better work partitioning to address these
+issues. In particular, we (1) tweak the algorithm to reduce the number of
+non-matmul FLOPs (2) parallelize the attention computation, even for a single
+head, across different thread blocks to increase occupancy, and (3) within each
+thread block, distribute the work between warps to reduce communication through
+shared memory. These yield around 2$\times$ speedup compared to FlashAttention,
+reaching 50-73\% of the theoretical maximum FLOPs/s on A100 and getting close
+to the efficiency of GEMM operations. We empirically validate that when used
+end-to-end to train GPT-style models, FlashAttention-2 reaches training speed
+of up to 225 TFLOPs/s per A100 GPU (72\% model FLOPs utilization).},
+ arxiv_url = {https://arxiv.org/pdf/2307.08691v1.pdf},
+ author = {Tri Dao},
+ github_url = {https://github.com/Dao-AILab/flash-attention},
+ title = {FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning},
+ year = {2023}
+}
+
+@article{hassani-2024-faster,
+ abstract = {Neighborhood attention reduces the cost of self attention by restricting each
+token's attention span to its nearest neighbors. This restriction,
+parameterized by a window size and dilation factor, draws a spectrum of
+possible attention patterns between linear projection and self attention.
+Neighborhood attention, and more generally sliding window attention patterns,
+have long been bounded by infrastructure, particularly in higher-rank spaces
+(2-D and 3-D), calling for the development of custom kernels, which have been
+limited in either functionality, or performance, if not both. In this work, we
+aim to massively improve upon existing infrastructure by providing two new
+methods for implementing neighborhood attention. We first show that
+neighborhood attention can be represented as a batched GEMM problem, similar to
+standard attention, and implement it for 1-D and 2-D neighborhood attention.
+These kernels on average provide 895% and 272% improvement in full precision
+runtime compared to existing naive CUDA kernels for 1-D and 2-D neighborhood
+attention respectively. We find that aside from being heavily bound by memory
+bandwidth, certain inherent inefficiencies exist in all unfused implementations
+of neighborhood attention, which in most cases undo their theoretical
+efficiency gain. Motivated by the progress made into fused dot-product
+attention kernels, we developed fused neighborhood attention; an adaptation of
+fused dot-product attention kernels that allow fine-grained control over
+attention across different spatial axes. Known for reducing the quadratic time
+complexity of self attention to a linear complexity, neighborhood attention can
+now enjoy a reduced and constant memory footprint, and record-breaking half
+precision runtime. We observe that our fused implementation successfully
+circumvents some of the unavoidable inefficiencies in unfused
+implementations...},
+ arxiv_url = {https://arxiv.org/pdf/2403.04690v3.pdf},
+ author = {Ali Hassani and Wen-Mei Hwu and Humphrey Shi},
+ github_url = {https://github.com/SHI-Labs/NATTEN},
+ title = {Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level},
+ year = {2024}
+}
+
+@article{hoover-2023-energy,
+ abstract = {Our work combines aspects of three promising paradigms in machine learning,
+namely, attention mechanism, energy-based models, and associative memory.
+Attention is the power-house driving modern deep learning successes, but it
+lacks clear theoretical foundations. Energy-based models allow a principled
+approach to discriminative and generative tasks, but the design of the energy
+functional is not straightforward. At the same time, Dense Associative Memory
+models or Modern Hopfield Networks have a well-established theoretical
+foundation, and allow an intuitive design of the energy function. We propose a
+novel architecture, called the Energy Transformer (or ET for short), that uses
+a sequence of attention layers that are purposely designed to minimize a
+specifically engineered energy function, which is responsible for representing
+the relationships between the tokens. In this work, we introduce the
+theoretical foundations of ET, explore its empirical capabilities using the
+image completion task, and obtain strong quantitative results on the graph
+anomaly detection and graph classification tasks.},
+ arxiv_url = {https://arxiv.org/pdf/2302.07253v2.pdf},
+ author = {Benjamin Hoover and Yuchen Liang and Bao Pham and Rameswar Panda and Hendrik Strobelt and Duen Horng Chau and Mohammed J. Zaki and Dmitry Krotov},
+ github_url = {https://github.com/bhoov/energy-transformer-jax},
+ journal = {37th Conference on Neural Information Processing Systems (NeurIPS
+  2023)},
+ title = {Energy Transformer},
+ year = {2023}
+}
+
+@article{hua-2022-transformer,
+ abstract = {We revisit the design choices in Transformers, and propose methods to address
+their weaknesses in handling long sequences. First, we propose a simple layer
+named gated attention unit, which allows the use of a weaker single-head
+attention with minimal quality loss. We then propose a linear approximation
+method complementary to this new layer, which is accelerator-friendly and
+highly competitive in quality. The resulting model, named FLASH, matches the
+perplexity of improved Transformers over both short (512) and long (8K) context
+lengths, achieving training speedups of up to 4.9$\times$ on Wiki-40B and
+12.1$\times$ on PG-19 for auto-regressive language modeling, and 4.8$\times$ on
+C4 for masked language modeling.},
+ arxiv_url = {https://arxiv.org/pdf/2202.10447v2.pdf},
+ author = {Weizhe Hua and Zihang Dai and Hanxiao Liu and Quoc V. Le},
+ title = {Transformer Quality in Linear Time},
+ year = {2022}
+}
+
+@article{liu-2022-ecoformer,
+ abstract = {Transformer is a transformative framework that models sequential data and has
+achieved remarkable performance on a wide range of tasks, but with high
+computational and energy cost. To improve its efficiency, a popular choice is
+to compress the models via binarization which constrains the floating-point
+values into binary ones to save resource consumption owing to cheap bitwise
+operations significantly. However, existing binarization methods only aim at
+minimizing the information loss for the input distribution statistically, while
+ignoring the pairwise similarity modeling at the core of the attention. To this
+end, we propose a new binarization paradigm customized to high-dimensional
+softmax attention via kernelized hashing, called EcoFormer, to map the original
+queries and keys into low-dimensional binary codes in Hamming space. The
+kernelized hash functions are learned to match the ground-truth similarity
+relations extracted from the attention map in a self-supervised way. Based on
+the equivalence between the inner product of binary codes and the Hamming
+distance as well as the associative property of matrix multiplication, we can
+approximate the attention in linear complexity by expressing it as a
+dot-product of binary codes. Moreover, the compact binary representations of
+queries and keys enable us to replace most of the expensive multiply-accumulate
+operations in attention with simple accumulations to save considerable on-chip
+energy footprint on edge devices. Extensive experiments on both vision and
+language tasks show that EcoFormer consistently achieves comparable performance
+with standard attentions while consuming much fewer resources. For example,
+based on PVTv2-B0 and ImageNet-1K, Ecoformer achieves a 73% on-chip energy
+footprint reduction with only a 0.33% performance drop compared to the standard
+attention. Code is available at https://github.com/ziplab/EcoFormer.},
+ arxiv_url = {https://arxiv.org/pdf/2209.09004v3.pdf},
+ author = {Jing Liu and Zizheng Pan and Haoyu He and Jianfei Cai and Bohan Zhuang},
+ github_url = {https://github.com/ziplab/EcoFormer},
+ title = {EcoFormer: Energy-Saving Attention with Linear Complexity},
+ year = {2022}
+}
+
+@article{nahshan-2023-linear,
+ abstract = {Transformer models have achieved remarkable results in a wide range of
+applications. However, their scalability is hampered by the quadratic time and
+memory complexity of the self-attention mechanism concerning the sequence
+length. This limitation poses a substantial obstacle when dealing with long
+documents or high-resolution images. In this work, we study the self-attention
+mechanism by analyzing the distribution of the attention matrix and its
+concentration ability. Furthermore, we propose instruments to measure these
+quantities and introduce a novel self-attention mechanism, Linear Log-Normal
+Attention, designed to emulate the distribution and concentration behavior of
+the original self-attention. Our experimental results on popular natural
+language benchmarks reveal that our proposed Linear Log-Normal Attention
+outperforms other linearized attention alternatives, offering a promising
+avenue for enhancing the scalability of transformer models.},
+ arxiv_url = {https://arxiv.org/pdf/2311.13541v4.pdf},
+ author = {Yury Nahshan and Joseph Kampeas and Emir Haleva},
+ title = {Linear Log-Normal Attention with Unbiased Concentration},
+ year = {2023}
+}
+
+@article{nguyen-2022-fourierformer,
+ abstract = {Multi-head attention empowers the recent success of transformers, the
+state-of-the-art models that have achieved remarkable success in sequence
+modeling and beyond. These attention mechanisms compute the pairwise dot
+products between the queries and keys, which results from the use of
+unnormalized Gaussian kernels with the assumption that the queries follow a
+mixture of Gaussian distribution. There is no guarantee that this assumption is
+valid in practice. In response, we first interpret attention in transformers as
+a nonparametric kernel regression. We then propose the FourierFormer, a new
+class of transformers in which the dot-product kernels are replaced by the
+novel generalized Fourier integral kernels. Different from the dot-product
+kernels, where we need to choose a good covariance matrix to capture the
+dependency of the features of data, the generalized Fourier integral kernels
+can automatically capture such dependency and remove the need to tune the
+covariance matrix. We theoretically prove that our proposed Fourier integral
+kernels can efficiently approximate any key and query distributions. Compared
+to the conventional transformers with dot-product attention, FourierFormers
+attain better accuracy and reduce the redundancy between attention heads. We
+empirically corroborate the advantages of FourierFormers over the baseline
+transformers in a variety of practical applications including language modeling
+and image classification.},
+ arxiv_url = {https://arxiv.org/pdf/2206.00206v1.pdf},
+ author = {Tan Nguyen and Minh Pham and Tam Nguyen and Khai Nguyen and Stanley J. Osher and Nhat Ho},
+ github_url = {https://github.com/facebookresearch/deit},
+ title = {FourierFormer: Transformer Meets Generalized Fourier Integral Theorem},
+ year = {2022}
+}
+
+@article{pagliardini-2023-fast,
+ abstract = {Transformer-based language models have found many diverse applications
+requiring them to process sequences of increasing length. For these
+applications, the causal self-attention -- which is the only component scaling
+quadratically w.r.t. the sequence length -- becomes a central concern. While
+many works have proposed schemes to sparsify the attention patterns and reduce
+the computational overhead of self-attention, those are often limited by
+implementations concerns and end up imposing a simple and static structure over
+the attention matrix. Conversely, implementing more dynamic sparse attentions
+often results in runtimes significantly slower than computing the full
+attention using the Flash implementation from Dao et al. (2022). We extend
+FlashAttention to accommodate a large class of attention sparsity patterns
+that, in particular, encompass key/query dropping and hashing-based attention.
+This leads to implementations with no computational complexity overhead and a
+multi-fold runtime speedup on top of FlashAttention. Even with relatively low
+degrees of sparsity, our method improves visibly upon FlashAttention as the
+sequence length increases. Without sacrificing perplexity, we increase the
+training speed of a transformer language model by $2.0\times$ and $3.3\times$
+for sequences of respectively $8k$ and $16k$ tokens.},
+ arxiv_url = {https://arxiv.org/pdf/2306.01160v1.pdf},
+ author = {Matteo Pagliardini and Daniele Paliotta and Martin Jaggi and François Fleuret},
+ github_url = {https://github.com/epfml/dynamic-sparse-flash-attention},
+ title = {Fast Attention Over Long Sequences With Dynamic Sparse Flash Attention},
+ year = {2023}
+}
+
+@article{shah-2024-flashattention,
+ abstract = {Attention, as a core layer of the ubiquitous Transformer architecture, is the
+bottleneck for large language models and long-context applications.
+FlashAttention elaborated an approach to speed up attention on GPUs through
+minimizing memory reads/writes. However, it has yet to take advantage of new
+capabilities present in recent hardware, with FlashAttention-2 achieving only
+35% utilization on the H100 GPU. We develop three main techniques to speed up
+attention on Hopper GPUs: exploiting asynchrony of the Tensor Cores and TMA to
+(1) overlap overall computation and data movement via warp-specialization and
+(2) interleave block-wise matmul and softmax operations, and (3) block
+quantization and incoherent processing that leverages hardware support for FP8
+low-precision. We demonstrate that our method, FlashAttention-3, achieves
+speedup on H100 GPUs by 1.5-2.0$\times$ with FP16 reaching up to 740 TFLOPs/s
+(75% utilization), and with FP8 reaching close to 1.2 PFLOPs/s. We validate
+that FP8 FlashAttention-3 achieves 2.6$\times$ lower numerical error than a
+baseline FP8 attention.},
+ arxiv_url = {https://arxiv.org/pdf/2407.08608v2.pdf},
+ author = {Jay Shah and Ganesh Bikshandi and Ying Zhang and Vijay Thakkar and Pradeep Ramani and Tri Dao},
+ github_url = {https://github.com/Dao-AILab/flash-attention},
+ title = {FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision},
+ year = {2024}
+}
+
+@article{yan-2021-attention,
+ abstract = {Transformer model with multi-head attention requires caching intermediate
+results for efficient inference in generation tasks. However, cache brings new
+memory-related costs and prevents leveraging larger batch size for faster
+speed. We propose memory-efficient lossless attention (called EL-attention) to
+address this issue. It avoids heavy operations for building multi-head keys and
+values, cache for them is not needed. EL-attention constructs an ensemble of
+attention results by expanding query while keeping key and value shared. It
+produces the same result as multi-head attention with less GPU memory and
+faster inference speed. We conduct extensive experiments on Transformer, BART,
+and GPT-2 for summarization and question generation tasks. The results show
+EL-attention speeds up existing models by 1.6x to 5.3x without accuracy loss.},
+ arxiv_url = {https://arxiv.org/pdf/2105.04779v2.pdf},
+ author = {Yu Yan and Jiusheng Chen and Weizhen Qi and Nikhil Bhendawade and Yeyun Gong and Nan Duan and Ruofei Zhang},
+ github_url = {https://github.com/pytorch/fairseq},
+ title = {EL-Attention: Memory Efficient Lossless Attention for Generation},
+ year = {2021}
+}
+
+@article{yu-2024-nonlocal,
+ abstract = {Despite the recent popularity of attention-based neural architectures in core
+AI fields like natural language processing (NLP) and computer vision (CV),
+their potential in modeling complex physical systems remains under-explored.
+Learning problems in physical systems are often characterized as discovering
+operators that map between function spaces based on a few instances of function
+pairs. This task frequently presents a severely ill-posed PDE inverse problem.
+In this work, we propose a novel neural operator architecture based on the
+attention mechanism, which we coin Nonlocal Attention Operator (NAO), and
+explore its capability towards developing a foundation physical model. In
+particular, we show that the attention mechanism is equivalent to a double
+integral operator that enables nonlocal interactions among spatial tokens, with
+a data-dependent kernel characterizing the inverse mapping from data to the
+hidden parameter field of the underlying operator. As such, the attention
+mechanism extracts global prior information from training data generated by
+multiple systems, and suggests the exploratory space in the form of a nonlinear
+kernel map. Consequently, NAO can address ill-posedness and rank deficiency in
+inverse PDE problems by encoding regularization and achieving generalizability.
+We empirically demonstrate the advantages of NAO over baseline neural models in
+terms of generalizability to unseen data resolutions and system states. Our
+work not only suggests a novel neural operator architecture for learning
+interpretable foundation models of physical systems, but also offers a new
+perspective towards understanding the attention mechanism.},
+ arxiv_url = {https://arxiv.org/pdf/2408.07307v1.pdf},
+ author = {Yue Yu and Ning Liu and Fei Lu and Tian Gao and Siavash Jafarzadeh and Stewart Silling},
+ title = {Nonlocal Attention Operator: Materializing Hidden Knowledge Towards Interpretable Physics Discovery},
+ year = {2024}
+}
+
+@article{zandieh-2023-kdeformer,
+ abstract = {Dot-product attention mechanism plays a crucial role in modern deep
+architectures (e.g., Transformer) for sequence modeling, however, na\"ive exact
+computation of this model incurs quadratic time and memory complexities in
+sequence length, hindering the training of long-sequence models. Critical
+bottlenecks are due to the computation of partition functions in the
+denominator of softmax function as well as the multiplication of the softmax
+matrix with the matrix of values. Our key observation is that the former can be
+reduced to a variant of the kernel density estimation (KDE) problem, and an
+efficient KDE solver can be further utilized to accelerate the latter via
+subsampling-based fast matrix products. Our proposed KDEformer can approximate
+the attention in sub-quadratic time with provable spectral norm bounds, while
+all prior results merely provide entry-wise error bounds. Empirically, we
+verify that KDEformer outperforms other attention approximations in terms of
+accuracy, memory, and runtime on various pre-trained models. On BigGAN image
+generation, we achieve better generative scores than the exact computation with
+over $4\times$ speedup. For ImageNet classification with T2T-ViT, KDEformer
+shows over $18\times$ speedup while the accuracy drop is less than $0.5\%$.},
+ arxiv_url = {https://arxiv.org/pdf/2302.02451v2.pdf},
+ author = {Amir Zandieh and Insu Han and Majid Daliri and Amin Karbasi},
+ github_url = {https://github.com/yitu-opensource/T2T-ViT},
+ title = {KDEformer: Accelerating Transformers via Kernel Density Estimation},
+ year = {2023}
+}
+
+% ===========================================
+% REFERENCE CANDIDATES
+% Additional reference papers for context
+% ===========================================
+
+@article{ainslie-2023-gqa,
+ abstract = {Multi-query attention (MQA), which only uses a single key-value head,
+drastically speeds up decoder inference. However, MQA can lead to quality
+degradation, and moreover it may not be desirable to train a separate model
+just for faster inference. We (1) propose a recipe for uptraining existing
+multi-head language model checkpoints into models with MQA using 5% of original
+pre-training compute, and (2) introduce grouped-query attention (GQA), a
+generalization of multi-query attention which uses an intermediate (more than
+one, less than number of query heads) number of key-value heads. We show that
+uptrained GQA achieves quality close to multi-head attention with comparable
+speed to MQA.},
+ arxiv_url = {https://arxiv.org/pdf/2305.13245v3.pdf},
+ author = {Joshua Ainslie and James Lee-Thorp and Michiel de Jong and Yury Zemlyanskiy and Federico Lebrón and Sumit Sanghai},
+ title = {Gqa: Training generalized multi-query transformer models from multi-head checkpoints.},
+ year = {2023}
+}
+
+@article{rabe-2021-self,
+ abstract = {We present a very simple algorithm for attention that requires $O(1)$ memory
+with respect to sequence length and an extension to self-attention that
+requires $O(\log n)$ memory. This is in contrast with the frequently stated
+belief that self-attention requires $O(n^2)$ memory. While the time complexity
+is still $O(n^2)$, device memory rather than compute capability is often the
+limiting factor on modern accelerators. Thus, reducing the memory requirements
+of attention allows processing of longer sequences than might otherwise be
+feasible. We provide a practical implementation for accelerators that requires
+$O(\sqrt{n})$ memory, is numerically stable, and is within a few percent of the
+runtime of the standard implementation of attention. We also demonstrate how to
+differentiate the function while remaining memory-efficient. For sequence
+length 16384, the memory overhead of self-attention is reduced by 59X for
+inference and by 32X for differentiation.},
+ arxiv_url = {https://arxiv.org/pdf/2112.05682v3.pdf},
+ author = {Markus N. Rabe and Charles Staats},
+ title = {Self-attention does not need 
+	O(n2)
+	memory.},
+ year = {2021}
+}
+
+@article{vaswani-2017-attention,
+ abstract = {The dominant sequence transduction models are based on complex recurrent or
+convolutional neural networks in an encoder-decoder configuration. The best
+performing models also connect the encoder and decoder through an attention
+mechanism. We propose a new simple network architecture, the Transformer, based
+solely on attention mechanisms, dispensing with recurrence and convolutions
+entirely. Experiments on two machine translation tasks show these models to be
+superior in quality while being more parallelizable and requiring significantly
+less time to train. Our model achieves 28.4 BLEU on the WMT 2014
+English-to-German translation task, improving over the existing best results,
+including ensembles by over 2 BLEU. On the WMT 2014 English-to-French
+translation task, our model establishes a new single-model state-of-the-art
+BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction
+of the training costs of the best models from the literature. We show that the
+Transformer generalizes well to other tasks by applying it successfully to
+English constituency parsing both with large and limited training data.},
+ arxiv_url = {https://arxiv.org/pdf/1706.03762v7.pdf},
+ author = {Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
+ title = {Attention is all you need.},
+ year = {2017}
+}
