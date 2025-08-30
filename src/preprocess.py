@@ -1,156 +1,143 @@
-from __future__ import annotations
+# -*- coding: utf-8 -*-
+"""
+Preprocessing utilities: Time-Warp key-step discovery and ΔF computation.
+- Provides generic ΔF heatmap computation and greedy key-step selection.
+- Includes a toy pipeline to generate features for quick tests.
+- Saves all figures as PDF under .research/iteration9/images.
+"""
+
 import os
-from dataclasses import dataclass
-from typing import Callable, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-try:
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-except Exception:
-    plt = None
-    sns = None
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
-def set_seed(seed: int):
-    np.random.seed(seed)
+def ensure_dir(path: str):
+    os.makedirs(path, exist_ok=True)
+
+
+def set_seed(seed: int = 42):
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
 
 
-class FiLM(nn.Module):
-    def __init__(self, channels: int, time_dim: int):
-        super().__init__()
-        self.to_scale = nn.Linear(time_dim, channels)
-        self.to_shift = nn.Linear(time_dim, channels)
-    def forward(self, x: torch.Tensor, t_emb: torch.Tensor) -> torch.Tensor:
-        # Ensure t_emb has batch dimension matching x; if a single time is provided, broadcast it
-        if t_emb.dim() == 1:
-            t_emb = t_emb.unsqueeze(0)
-        B = x.size(0)
-        if t_emb.size(0) != B:
-            if t_emb.size(0) == 1:
-                t_emb = t_emb.expand(B, -1)
-            else:
-                raise ValueError(f"t_emb batch {t_emb.size(0)} does not match x batch {B}")
-        s = self.to_scale(t_emb).unsqueeze(-1).unsqueeze(-1)
-        b = self.to_shift(t_emb).unsqueeze(-1).unsqueeze(-1)
-        return x * (1 + s) + b
-
-
-class TimeEmbedding(nn.Module):
-    def __init__(self, dim: int = 64):
-        super().__init__()
-        self.proj = nn.Sequential(
-            nn.Linear(1, dim), nn.SiLU(), nn.Linear(dim, dim)
-        )
-    def forward(self, t_scalar: torch.Tensor) -> torch.Tensor:
-        return self.proj(t_scalar.view(-1, 1))
-
-
-class SimpleDiffusionTeacher(nn.Module):
-    """A tiny UNet-like epsilon predictor with multi-scale features and FiLM time conditioning.
-    Returns epsilon and a list of features across 3 scales.
+def compute_deltaF_heatmap(get_features_fn, n_steps: int) -> Tuple[np.ndarray, List[str]]:
+    """Runs get_features_fn(step_index) for t=0..n_steps-1 and returns
+    - deltaF: (n_layers, n_steps-1) matrix of L2 norms of per-step changes
+    - layer_ids: order of layers
     """
-    def __init__(self, in_channels: int = 4, base: int = 32, time_dim: int = 64):
-        super().__init__()
-        self.time = TimeEmbedding(time_dim)
-
-        # Encoder-like
-        self.conv1 = nn.Conv2d(in_channels, base, 3, padding=1)
-        self.film1 = FiLM(base, time_dim)
-        self.conv2 = nn.Conv2d(base, base, 3, padding=1)
-        self.down1 = nn.Conv2d(base, base*2, 3, stride=2, padding=1)
-        self.film2 = FiLM(base*2, time_dim)
-        self.conv3 = nn.Conv2d(base*2, base*2, 3, padding=1)
-        self.down2 = nn.Conv2d(base*2, base*4, 3, stride=2, padding=1)
-        self.film3 = FiLM(base*4, time_dim)
-        self.conv4 = nn.Conv2d(base*4, base*4, 3, padding=1)
-
-        # Simple head to epsilon at highest resolution
-        self.up1 = nn.ConvTranspose2d(base*4, base*2, 2, stride=2)
-        self.up2 = nn.ConvTranspose2d(base*2, base, 2, stride=2)
-        self.out = nn.Conv2d(base, in_channels, 3, padding=1)
-
-        self.feature_channels = [base, base*2, base*4]
-
-    def forward(self, x: torch.Tensor, t_scalar: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
-        t_emb = self.time(t_scalar)
-        h1 = F.silu(self.conv1(x))
-        h1 = self.film1(h1, t_emb)
-        h1 = F.silu(self.conv2(h1))  # [B, base, 32, 32]
-        h2 = F.silu(self.down1(h1))
-        h2 = self.film2(h2, t_emb)
-        h2 = F.silu(self.conv3(h2))  # [B, 2*base, 16, 16]
-        h3 = F.silu(self.down2(h2))
-        h3 = self.film3(h3, t_emb)
-        h3 = F.silu(self.conv4(h3))  # [B, 4*base, 8, 8]
-
-        # Decode to epsilon
-        u = F.silu(self.up1(h3))  # 16x16
-        u = F.silu(self.up2(u))   # 32x32
-        eps = self.out(u)         # [B,4,32,32]
-        feats = [h1, h2, h3]
-        return eps, feats
+    feats_prev: Dict[str, torch.Tensor] = {}
+    layer_ids: List[str] = []
+    deltas: Dict[str, List[float]] = {}
+    for t in range(n_steps):
+        feats = get_features_fn(t)
+        if not layer_ids:
+            layer_ids = sorted(list(feats.keys()))
+            for k in layer_ids:
+                deltas[k] = []
+        if t > 0:
+            for k in layer_ids:
+                a = feats[k]
+                b = feats_prev[k]
+                delta = (a - b).float().pow(2).sum().sqrt().item()
+                deltas[k].append(delta)
+        feats_prev = {k: v.detach().cpu() for k, v in feats.items()}
+    mat = np.stack([deltas[k] for k in layer_ids], axis=0)
+    return mat, layer_ids
 
 
-def compute_deltaF_over_time(teacher: SimpleDiffusionTeacher, T: int, batch: int, device: str) -> torch.Tensor:
-    dev = torch.device(device)
-    teacher = teacher.to(dev).eval()
-    time_grid = torch.linspace(0.0, 1.0, steps=T, device=dev)
+def greedy_timewarp_key_selection(deltaF: np.ndarray, K: int, stratify_bins: int = 4) -> List[int]:
+    """Greedy selection of K key steps based on summed ΔF across layers with stratification.
+    deltaF: (L, T-1) for steps 1..T-1. Return indices in 1..T-1 inclusive.
+    """
+    L, Tm1 = deltaF.shape
+    scores = deltaF.sum(axis=0)
+    bins = np.digitize(np.arange(Tm1), np.linspace(0, Tm1, stratify_bins+1)[1:-1])
+    selected: List[int] = []
+    used_bins = set()
+    # First pass: encourage spread
+    for _ in range(min(K, stratify_bins)):
+        mask = np.ones_like(scores, dtype=bool)
+        for b in used_bins:
+            mask &= (bins != b)
+        idx = np.argmax(np.where(mask, scores, -np.inf))
+        if not np.isfinite(scores[idx]):
+            break
+        selected.append(int(idx+1))
+        used_bins.add(int(bins[idx]))
+    # Fill remaining with diversity penalty
+    while len(selected) < K:
+        penalty = np.zeros_like(scores)
+        for s in selected:
+            penalty += 0.1 / (np.abs(np.arange(Tm1) - (s-1)) + 1)
+        idx = int(np.argmax(scores - penalty))
+        cand = int(idx+1)
+        if cand not in selected:
+            selected.append(cand)
+        else:
+            order = np.argsort(-(scores - penalty))
+            for j in order:
+                cand = int(j+1)
+                if cand not in selected:
+                    selected.append(cand)
+                    break
+        if len(selected) >= K:
+            break
+    return sorted(selected)
 
-    # Record features per step as means over batch
-    feats_seq: List[List[torch.Tensor]] = []  # [T][scales]
-    with torch.no_grad():
-        for t in range(T):
-            latents = torch.randn(batch, 4, 32, 32, device=dev)
-            _, feats = teacher(latents, time_grid[t])
-            feats_seq.append([f.detach().cpu() for f in feats])
 
-    # Compute ΔF aggregated across scales
-    deltaF = torch.zeros(T-1)
-    for s in range(len(teacher.feature_channels)):
-        # stack over time: [T, B, C, H, W]
-        xs = torch.stack([feats_seq[t][s] for t in range(T)], dim=0).float()
-        # L2 change per step averaged over batch/spatial/channel, normalized by sqrt(C)
-        C = xs.shape[2]
-        d = (xs[1:] - xs[:-1]).pow(2).mean(dim=(1,2,3,4)).sqrt() / np.sqrt(C)
-        deltaF[:d.shape[0]] += d
-    return deltaF
+def save_heatmap_pdf(deltaF: np.ndarray, key_steps: List[int], out_pdf: str, title: str = "ΔF Heatmap", xlabel: str = "Step", ylabel: str = "Layer"):
+    ensure_dir(os.path.dirname(out_pdf))
+    plt.figure(figsize=(7,4))
+    sns.heatmap(deltaF, cmap='magma')
+    for ks in key_steps:
+        plt.axvline(ks + 0.5, color='cyan', linestyle='--', linewidth=1.2)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.tight_layout()
+    plt.savefig(out_pdf, bbox_inches='tight')
+    plt.close()
 
 
-def greedy_key_selection(deltaF: torch.Tensor, K: int, coverage: int = 2) -> List[int]:
-    temp = deltaF.clone()
-    Tm1 = temp.numel()
-    chosen: List[int] = []
-    for _ in range(K):
-        idx = int(torch.argmax(temp).item())
-        chosen.append(idx+1)  # 1-based
-        low = max(0, idx - coverage)
-        high = min(Tm1-1, idx + coverage)
-        temp[low:high+1] *= 0.5
-    return sorted(set(chosen))
+def timewarp_discover_toy(n_steps: int = 10, K: int = 3, image_shape: Tuple[int, int] = (64, 64), images_out_dir: str = ".research/iteration9/images") -> List[int]:
+    """Runs a toy ΔF computation and returns selected key steps. Saves a PDF heatmap."""
+    ensure_dir(images_out_dir)
+    set_seed(123)
 
+    class _Toy(nn.Module):
+        def __init__(self, c: int = 16):
+            super().__init__()
+            self.conv1 = nn.Conv2d(3, c, 3, padding=1)
+            self.conv2 = nn.Conv2d(c, c, 3, padding=1)
+            self.gate = nn.Linear(1, c)
+        def forward(self, x, t):
+            h = torch.silu(self.conv1(x))
+            g = self.gate(t.view(-1,1)).view(-1, h.shape[1], 1, 1)
+            f1 = torch.silu(h + g)
+            f2 = torch.silu(self.conv2(f1))
+            return {"down_0": f1, "down_1": f2}
 
-def save_deltaF_plot(deltaF: torch.Tensor, keys_1based: List[int], out_pdf: str):
-    if plt is None:
-        print(f"Matplotlib not available; skipping plot {out_pdf}")
-        return
-    os.makedirs(os.path.dirname(out_pdf), exist_ok=True)
-    sns.set(style='whitegrid')
-    x = list(range(1, deltaF.numel()+1))
-    plt.figure(figsize=(6,2))
-    plt.imshow(deltaF.view(1,-1).cpu().numpy(), aspect='auto', cmap='viridis')
-    for k in keys_1based:
-        plt.axvline(k-1, color='w', linestyle='--', alpha=0.6)
-    plt.yticks([])
-    plt.xlabel('Step index (Δ between t and t-1)')
-    plt.title('Aggregated ΔF over time')
-    plt.tight_layout(); plt.savefig(out_pdf, bbox_inches='tight'); plt.close()
-    print(f'Saved figure: {out_pdf}')
+    B = 4
+    H, W = image_shape
+    x = torch.randn(B, 3, H, W)
+    net = _Toy().eval()
+
+    def _feat_fn(step_idx: int):
+        t = torch.tensor([step_idx / max(1, n_steps-1)], dtype=torch.float32)
+        with torch.no_grad():
+            feats = net(x, t)
+        return {k: v.detach().cpu() for k, v in feats.items()}
+
+    deltaF, _ = compute_deltaF_heatmap(_feat_fn, n_steps=n_steps)
+    key = greedy_timewarp_key_selection(deltaF, K=K, stratify_bins=4)
+    pdf_path = os.path.join(images_out_dir, "deltaF_heatmap_timewarp_discovery_toy.pdf")
+    save_heatmap_pdf(deltaF, key, pdf_path, title="ΔF Heatmap (Toy Time-Warp)")
+    return key

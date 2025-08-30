@@ -1,110 +1,101 @@
-from __future__ import annotations
+# -*- coding: utf-8 -*-
+"""
+Main entry for running the LoRA-Prop (+ Time-Warp) experimental pipeline.
+- Orchestrates: preprocess (key-step discovery), train (LoRA adapters), and evaluate (toy experiments).
+- All figures are saved as PDF under .research/iteration9/images.
+- Run from project root: python -m src.main
+
+This script is intentionally lightweight and performs a quick functional run.
+"""
+
 import os
-import sys
+import argparse
+from typing import Any, Dict
+
 import yaml
-from dataclasses import dataclass
-from typing import List, Dict, Any
 
-import torch
-
-from .preprocess import (
-    SimpleDiffusionTeacher,
-    compute_deltaF_over_time,
-    greedy_key_selection,
-    save_deltaF_plot,
-    set_seed,
-)
-from .train import train_lora_prop, TrainConfig
-from .evaluate import eval_eps_prediction, onnx_export_light
+from .preprocess import timewarp_discover_toy
+from .train import TrainConfig, train_lora_adapters_toy
+from .evaluate import EvalConfig, evaluate_toy, quick_test_eval
 
 
-@dataclass
-class Config:
-    seed: int
-    device: str
-    T_dry: int
-    K_keys: int
-    deltaF_batch: int
-    train_iters: int
-    train_lr: float
-    train_batch: int
-    rank: int
-    results_dir: str
-    images_dir: str
-    model_save_path: str
+DEFAULT_CONFIG_PATH = os.path.join("config", "experiment.yaml")
 
 
-def load_config(path: str) -> Config:
+def load_config(path: str) -> Dict[str, Any]:
+    if not os.path.exists(path):
+        # default lightweight config
+        return {
+            "device": "cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu",
+            "total_steps": 10,
+            "key_K": 3,
+            "rank": 8,
+            "train": {"epochs": 3, "batch_size": 16, "n_images": 32},
+            "images_out_dir": ".research/iteration9/images",
+            "models_out_dir": "models",
+            "models_ckpt_name": "loraprop_toy.pt",
+            "seeds": [0, 1]
+        }
     with open(path, 'r') as f:
-        d = yaml.safe_load(f)
-    return Config(
-        seed=int(d.get('seed', 123)),
-        device=d.get('device', 'cuda' if torch.cuda.is_available() else 'cpu'),
-        T_dry=int(d.get('T_dry', 20)),
-        K_keys=int(d.get('K_keys', 3)),
-        deltaF_batch=int(d.get('deltaF_batch', 8)),
-        train_iters=int(d.get('train_iters', 200)),
-        train_lr=float(d.get('train_lr', 5e-4)),
-        train_batch=int(d.get('train_batch', 8)),
-        rank=int(d.get('rank', 8)),
-        results_dir=d.get('results_dir', 'results'),
-        images_dir=d.get('images_dir', '.research/iteration8/images'),
-        model_save_path=d.get('model_save_path', 'models/loraprop_lightpath.pt'),
-    )
-
-
-def ensure_dirs(cfg: Config):
-    os.makedirs(cfg.results_dir, exist_ok=True)
-    os.makedirs(cfg.images_dir, exist_ok=True)
-    os.makedirs(os.path.dirname(cfg.model_save_path), exist_ok=True)
+        return yaml.safe_load(f)
 
 
 def main():
-    # Default config path
-    config_path = os.environ.get('LORAPROP_CONFIG', 'config/config.yaml')
-    cfg = load_config(config_path)
-    ensure_dirs(cfg)
+    parser = argparse.ArgumentParser(description="LoRA-Prop (+ Time-Warp) Experimental Suite (Toy)")
+    parser.add_argument("--config", type=str, default=DEFAULT_CONFIG_PATH, help="Path to YAML config")
+    parser.add_argument("--quick", action="store_true", help="Run a quick self-test evaluation and exit")
+    args = parser.parse_args()
 
-    print('=== LoRA-Prop (+ Time-Warp) synthetic experiment ===')
-    print(f"Device: {cfg.device}")
-    print(f"Config loaded from: {config_path}")
+    if args.quick:
+        quick_test_eval()
+        return
 
-    set_seed(cfg.seed)
+    cfg = load_config(args.config)
+    images_out_dir = cfg.get("images_out_dir", ".research/iteration9/images")
+    models_out_dir = cfg.get("models_out_dir", "models")
+    device = cfg.get("device", "cpu")
+    total_steps = int(cfg.get("total_steps", 10))
+    K = int(cfg.get("key_K", 3))
+    rank = int(cfg.get("rank", 8))
+    seeds = tuple(cfg.get("seeds", [0, 1]))
 
-    # 1) Build teacher
-    teacher = SimpleDiffusionTeacher(in_channels=4, base=32)
+    # 1) Preprocess: Time-Warp key-step discovery
+    print("[Main] Discovering key-steps via Time-Warp (toy)…")
+    key_steps = timewarp_discover_toy(n_steps=total_steps, K=K, images_out_dir=images_out_dir)
+    print(f"[Main] Key steps selected: {key_steps}")
 
-    # 2) Dry pass for ΔF and key-step discovery
-    print('[Stage 1] Time-Warp (ΔF) dry pass ...')
-    deltaF = compute_deltaF_over_time(teacher, T=cfg.T_dry, batch=cfg.deltaF_batch, device=cfg.device)
-    keys_1based = greedy_key_selection(deltaF, K=cfg.K_keys, coverage=2)
-    print(f"Selected key steps (1-based): {keys_1based}")
-    # Save PDF figure
-    deltaF_pdf = os.path.join(cfg.images_dir, 'deltaF_heatmap.pdf')
-    save_deltaF_plot(deltaF, keys_1based, deltaF_pdf)
+    # 2) Train: LoRA adapters on synthetic data
+    print("[Main] Training LoRA-Prop adapters (toy)…")
+    train_cfg = TrainConfig(
+        rank=rank,
+        batch_size=int(cfg.get("train", {}).get("batch_size", 16)),
+        epochs=int(cfg.get("train", {}).get("epochs", 3)),
+        lr=float(cfg.get("train", {}).get("lr", 1e-3)),
+        n_images=int(cfg.get("train", {}).get("n_images", 32)),
+        total_steps=total_steps,
+        key_steps=tuple(key_steps),
+        device=device,
+        images_out_dir=images_out_dir,
+        models_out_dir=models_out_dir,
+        model_name=str(cfg.get("models_ckpt_name", "loraprop_toy.pt")),
+    )
+    ckpt_path = train_lora_adapters_toy(train_cfg)
 
-    # 3) Train LoRA-Prop light adapters
-    print('[Stage 2] Training LoRA-Prop adapters (synthetic) ...')
-    tcfg = TrainConfig(seed=cfg.seed, device=cfg.device, lr=cfg.train_lr, batch_size=cfg.train_batch,
-                       iters=cfg.train_iters, rank=cfg.rank, save_path=cfg.model_save_path)
-    light, train_info = train_lora_prop(keys_1based, T=cfg.T_dry, teacher=teacher, cfg=tcfg)
-
-    # 4) Evaluate epsilon prediction quality across steps
-    print('[Stage 3] Evaluation ...')
-    eval_info = eval_eps_prediction(light, teacher, keys_1based, T=cfg.T_dry, batch=cfg.train_batch,
-                                    device=cfg.device, save_dir_pdf=cfg.images_dir)
-
-    # 5) ONNX export (optional)
-    print('[Stage 4] ONNX export ...')
-    onnx_path = os.path.join('models', 'loraprop_lightpath.onnx')
-    _ = onnx_export_light(light, teacher, device=cfg.device, save_path=onnx_path)
-
-    print('=== Finished. Artifacts ===')
-    print(f"  - LoRA-Prop model: {cfg.model_save_path}")
-    print(f"  - Figures (PDF): {cfg.images_dir}")
-    print(f"  - ONNX (if exported): {onnx_path}")
+    # 3) Evaluate: cache-only vs our adapters
+    print("[Main] Evaluating adapters (toy)…")
+    eval_cfg = EvalConfig(
+        total_steps=total_steps,
+        seeds=seeds,
+        device=device,
+        images_out_dir=images_out_dir,
+        models_ckpt_path=ckpt_path,
+        rank=rank,
+    )
+    summary = evaluate_toy(eval_cfg)
+    print("[Main] Summary metrics:")
+    for k, v in summary.items():
+        print(f"  - {k}: {v}")
 
 
-if __name__ == '__main__':
-    # Run the pipeline when invoked via: python -m src.main
+if __name__ == "__main__":
     main()

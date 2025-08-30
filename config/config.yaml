@@ -1,20 +1,20 @@
-# Minimal configuration for the synthetic LoRA-Prop (+ Time-Warp) experiment
-seed: 123
-# Device will default to CUDA if available; override here if needed
-device: cuda
+# Lightweight configuration for the LoRA-Prop (+ Time-Warp) toy experiment
+# Run from project root: python -m src.main --config config/experiment.yaml
 
-# Dry pass for ΔF and key-step discovery
-T_dry: 20         # total steps in the synthetic timeline
-K_keys: 3         # number of key steps to select
-deltaF_batch: 8   # batch size during ΔF dry run
+device: cpu  # set to "cuda" if an NVIDIA GPU (e.g., Tesla T4) is available
 
-# Training LoRA-Prop adapters
-train_iters: 200
-train_lr: 5.0e-4
-train_batch: 8
+total_steps: 10
+key_K: 3
 rank: 8
 
-# Paths
-results_dir: results
-images_dir: .research/iteration8/images
-model_save_path: models/loraprop_lightpath.pt
+train:
+  epochs: 3
+  batch_size: 16
+  lr: 0.001
+  n_images: 32
+
+seeds: [0, 1]
+
+images_out_dir: .research/iteration9/images
+models_out_dir: models
+models_ckpt_name: loraprop_toy.pt
