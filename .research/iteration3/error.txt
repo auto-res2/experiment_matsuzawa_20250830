@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 154, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 110, in main
+    _ = train_lora_prop(model, lora, scheduler, train_loader, key_indices,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py", line 429, in train_lora_prop
+    x_t, _ = scheduler.add_noise(img, t_j.long())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py", line 116, in add_noise
+    at = self.alpha_bars[t].reshape(-1, 1, 1, 1).to(x0.device)
+         ~~~~~~~~~~~~~~~^^^
+RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
