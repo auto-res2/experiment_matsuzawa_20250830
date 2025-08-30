@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 153, in <module>
+    main()
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/main.py", line 94, in main
+    key_indices = discover_key_steps(model, scheduler, x_T, cond, n_probe=cfg.get("scheduler_steps", 40), K=K)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py", line 371, in discover_key_steps
+    x = scheduler.ddim_step(x, int(t), eps)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/experiment_matsuzawa_20250830/experiment_matsuzawa_20250830/src/train.py", line 126, in ddim_step
+    x0 = (x - torch.sqrt(1 - at) * eps) / torch.sqrt(at)
+          ~~^~~~~~~~~~~~~~~~~~~~~~~~~~
+RuntimeError: The size of tensor a (3) must match the size of tensor b (32) at non-singleton dimension 1
