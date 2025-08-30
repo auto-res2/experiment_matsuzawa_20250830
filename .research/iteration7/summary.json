@@ -1,0 +1,30 @@
+{
+  "config": {
+    "model_cfg": {
+      "model_name": "gpt2",
+      "device_index": 0
+    },
+    "run_cfg": {
+      "seeds": [
+        11,
+        13
+      ],
+      "seq_lens": [
+        512,
+        1024
+      ],
+      "backends": [
+        "mem_efficient",
+        "math",
+        "eafa"
+      ],
+      "max_batches": 20,
+      "tokens_budget": 16000,
+      "output_dir": ".research/iteration7",
+      "images_dir": ".research/iteration7/images"
+    },
+    "tokens_npy": "data/wikitext103_gpt2_tokens.npy"
+  },
+  "n_rows": 240,
+  "idle_watts": 26.15304782608696
+}
